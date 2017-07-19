@@ -7,7 +7,7 @@ import time
 #File name needs to be parsed to not include full Path
 EDF_file = mne.io.read_raw_edf(sys.argv[1])
 
-#splits the fileName into list of strings seperated by \
+#Splits the fileName into list of strings seperated by /
 #[-1] takes the last string in the list which is the file name
 NameOfFile = (sys.argv[1].split('/')[-1])
 
@@ -27,5 +27,5 @@ edfDictionary['subject_info'] = EDF_file.info["subject_info"]
 
 edfDictionary['file_name'] = NameOfFile 
 
-#the jason dictionary of meta data of edf file
+#The JSON dictionary of meta data of edf file
 edfDictionaryToJSON = json.dumps(edfDictionary)
