@@ -9,7 +9,7 @@ EDF_file = mne.io.read_raw_edf(sys.argv[1])
 
 #splits the fileName into list of strings seperated by \
 #[-1] takes the last string in the list which is the file name
-NameOfFile = (sys.argv[1].split('\\')[-1])
+NameOfFile = (sys.argv[1].split('/')[-1])
 
 timeConvert = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(EDF_file.info["meas_date"]))
 
