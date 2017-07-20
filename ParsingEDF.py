@@ -13,7 +13,7 @@ def EdfParse(path = None):
       EDF_file = mne.io.read_raw_edf(path)
    #splits the fileName into list of strings seperated by \
    #[-1] takes the last string in the list which is the file name
-   NameOfFile = (path.split('/')[-1])
+   NameOfFile = (path.split('\\')[-1])
 
    timeConvert = time.strftime('%Y-%m-%d %H:%M:%S', 
        time.localtime(EDF_file.info["meas_date"]))
@@ -34,6 +34,7 @@ def EdfParse(path = None):
 
    #the jason dictionary of meta data of edf file
    edfDictionaryToJSON = json.dumps(edfDictionary)
+   print(NameOfFile)
    return print("Done")
  
 def main (File_to_Parse = None):

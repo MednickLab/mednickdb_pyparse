@@ -2,12 +2,16 @@ import xlrd
 import requests
 import json
 import os
+import ParsingEDF
 
 #enter path to dir containing the parsing files
-exec("/PythonInternship/ParsingEDF.py")
+#exec("C:\\source\\Users\\User\\Desktop\\python-parsint\\ParsingEDF.py")
  
 #directory to find all files in
-testdir = "C:\\source\\mednick\\mednick\\temp"
+testdir = "C:\\source\\mednickdb\\temp"
+
+#server http://127.0.0.1:8001/files/temp
+serverdir = "http://127.0.0.1:8001/files/temp"
 
 #function to find all files in dirPath
 #returns a list of strings containing the path to the files
@@ -20,21 +24,29 @@ def getAllFilesInTree(dirPath):
             _files.append(filePath)
     print(_files)
     return _files
+	
+def getAllTempFileRecords():
+    response = requests.get("http://127.0.0.1:8001/files/temp/")
+    records = response.json()
+    _files = [i["path"] for i in records]
+    return _files
 
 
 def main():
-    print("in main")
-    filesInTemp = getAllFilesInTree(testdir)
+    
+	filesInTemp = getAllFilesInTree(testdir)
+	filesInServerTemp = getAllTempFileRecords()
     #cycle through the files and if you find one that is a __ run script
-    print(filesInTemp)
-    for _files in filesInTemp:
-        if True:# _files.endswith(".edf"):
-           #run our python script
-           # Parse.main(_files);  
-           EdfParse("~\\PythonInternship\\Copy of PAI_2019.edf")
-   
-    EdfParse("~/PythonInternship/Copy of PAI_2019.edf")
-    print("exit main")   #delete this line
+	print(filesInTemp)
+	for _files in filesInTemp:
+	   if  _files.endswith(".edf"):
+	      ParsingEDF.main(_files) #run our python script
+		  
+           
+    
+	#use for testing if call to ParsingEDF works
+    #ParsingEDF.main("C:\\Users\\User\\Desktop\\Copy of PAI_2019.edf")
+	print("exit main")   #delete this line
 
-if __name__ == "__main__":
-   main()
+#if __name__ == "__main__":
+main()
