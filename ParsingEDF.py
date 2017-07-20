@@ -15,8 +15,10 @@ def EdfParse(path = None):
    #[-1] takes the last string in the list which is the file name
    NameOfFile = (path.split('\\')[-1])
 
+
    timeConvert = time.strftime('%Y-%m-%d %H:%M:%S', 
        time.localtime(EDF_file.info["meas_date"]))
+
 
    edfDictionary = {}
    
@@ -41,4 +43,5 @@ def main (File_to_Parse = None):
    EdfParse(File_to_Parse)
 
 #main()
+
 
