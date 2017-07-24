@@ -37,7 +37,15 @@ def main():
 	filesInTemp = getAllFilesInTree(testdir)
 	filesInServerTemp = getAllTempFileRecords()
     #cycle through the files and if you find one that is a __ run script
-	print(filesInTemp)
+	
+	#print(filesInTemp)
+	
+	#goes through files in our temp folder and parse 
+	for _files in filesInTemp:
+	   if  _files.endswith(".edf"):
+	      ParsingEDF.main(_files) #run our python script
+		  
+	#goes through files in server temp folder and parse
 	for _files in filesInTemp:
 	   if  _files.endswith(".edf"):
 	      ParsingEDF.main(_files) #run our python script
