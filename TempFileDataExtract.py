@@ -3,7 +3,7 @@ import requests
 import json
 import os
 import ParsingEDF
-import ParsingXLSX
+import ParsingPandas
  
 #directory to find all files in
 testdir = "C:\\source\\mednickdb\\temp"
@@ -43,8 +43,8 @@ def main():
 	for _files in filesInTemp:
 	   if  _files.endswith(".edf"):
 	      ParsingEDF.main(_files) #run our python script
-	   elif _files.endswith(".xls"):
-	      ParsingXLSX.main(_files)
+	   elif _files.endswith(".xls") or _files.endswith(".xlsx") or _files.endswith(".csv"):
+	      ParsingPandas.main(_files)
 #		  		
 #	#goes through files in server temp folder and parse
 #	print("before For loop")
