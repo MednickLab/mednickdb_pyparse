@@ -1,5 +1,5 @@
 import pandas as pd
-import nme
+import mne
 import numpy
 import datetime
 import ParsingPandas
@@ -7,6 +7,7 @@ import xlrd
 import requests
 import json
 import os 
+
 
 def getAllFilesInTree(dirPath):
     _files = []
@@ -33,16 +34,21 @@ def Parsing(PandaFile):
 
 				    	  
 
-
 def StringTimetoEpoch(time):
 	#print(time)
 	time = time.replace('.',':')
 	temp = time.split(":")
-	Hour = int(temp[0]) * 120
-	Min = int(temp[1]) * 2
-	Sec = int(temp[2]) / 30
-	EpochTime = Hour+ Min+ Sec
-	EpochTime = round(EpochTime, 1)
+	hours = int(temp[0])
+	if temp[-1].find("AM") != -1 and temp[0].find("12"):
+		hours = 0
+	elif temp[-1].find("PM") != -1:
+		hours = hours + 12
+	#get rid of AM and PM
+	temp[-1] = temp[-1].split(' ')[0]
+	
+	EpochTime = hours * 60 + int(temp[1]) + int(temp[2])/60
+	EpochTime = round(EpochTime,1)
+
 	return EpochTime
 	
 	
@@ -79,15 +85,18 @@ def ScoringParseChoose(file):
 def BasicScoreFile(file):
 	JasonObj = {}
 	JasonObj["epochstage"] = []
+	JasonObj["Type"] = "0"
 	for line in file:
 		temp = line.split(' ')
-		temp[0] = line.strip('\n')
+		temp = temp[0].split('\t')
+		temp[0] = temp[0].strip('\n')
 		JasonObj["epochstage"].append(temp[0])
 	return JasonObj	
 
 # Type 1
 def LatTypeScoreFile(file):
 	JasonObj = {}
+	JasonObj["Type"] = "1"
 	JasonObj["epochstage"] = []
 	JasonObj["epochstarttime"] = []
 	file.readline()						#done so that we can ignore the first line which just contain variable names
@@ -106,6 +115,7 @@ def LatTypeScoreFile(file):
 # Type 2
 def FullScoreFile(file):
 	JasonObj = {}
+	JasonObj["Type"] = "2"
 	JasonObj["epochstage"] = []
 	JasonObj["epochstarttime"] = []
 #find line with SleepStage
@@ -114,12 +124,18 @@ def FullScoreFile(file):
 	
 	SleepStagePos = 0
 	TimePos = 0
+	EventPos = 0
+	
 	for line in file:
 		if StartSplit and line.strip() != '':
 			temp = line.split('\t')
-			JasonObj["epochstage"].append(temp[SleepStagePos])
-			time = StringTimetoEpoch(temp[TimePos])
-			JasonObj["epochstarttime"].append(time)
+			#print(len(temp))
+			#print(EventPos)
+			#print(file)
+			if len(temp) > EventPos and temp[EventPos].find("MCAP") == -1:
+				JasonObj["epochstage"].append(temp[SleepStagePos])
+				time = StringTimetoEpoch(temp[TimePos])
+				JasonObj["epochstarttime"].append(time)
 			
 		if line.find("Sleep Stage") != -1:
 			StartSplit = True
@@ -129,6 +145,8 @@ def FullScoreFile(file):
 					SleepStagePos = i
 				if temp[i].find("Time") != -1:
 					TimePos = i
+				if temp[i].find("Event") != -1:
+					EventPos = i
 	return JasonObj
 	
 #gets the file reads it using appropriate read method then calls appropriate parse function 
@@ -145,10 +163,10 @@ def MakeJsonObj(file):
 		temp = temp[0].split('\\')
 		temp = temp[-1].split('ics_')
 		temp = temp[-1]
-		visit = 1
+		#visit = 1
 		if '_P' in temp: 
 			temp = temp.split('_')
-			visit = temp[-1]
+			#visit = temp[-1]
 			temp = temp[0]
 			dict = {}
 		returningList = []
@@ -165,7 +183,7 @@ def MakeJsonObj(file):
 				if isinstance(JsonList[i]["subjectID"],str):
 					JsonList[i]["subjectID"] = JsonList[i]["subjectID"].lower()
 			JsonList[i]["studyID"] = temp
-			JsonList[i]["visitID"] = visit
+			#JsonList[i]["visitID"] = visit
 		
 		return JsonList
 
@@ -213,6 +231,20 @@ def CombineJson(Demo, Score):
 				if  str(Demo[i]["subjectID"]) == str(Score[j]["subjectID"]):
 					#print("MATCH 2")
 					temp = {**Demo[i],**Score[j]}
+					
+					#type 0 files have epoch timestamps we add it now
+					if temp["Type"] == '0':
+							temp["epochstarttime"] = []
+							#print(temp.keys())
+							if "startime" in temp.keys():
+								temp["epochstarttime"].append(StringTimetoEpoch(temp["startime"]))
+							elif "starttime" in temp.keys():
+								temp["epochstarttime"].append(StringTimetoEpoch(temp["starttime"]))
+							for samples in range(len(temp["epochstage"]) - 1):
+								epochTime = temp["epochstarttime"][samples] + .5
+								if epochTime > 1439.5:
+									epochTime = 0
+								temp["epochstarttime"].append(epochTime)
 					ReturnJsonList.append(temp)
 					Found = True
 				#else:
@@ -251,6 +283,6 @@ def main(file):
 				JsonObjListDemo.append(i)
 	#call function to combine the lists into one json obj
 	FinishedJson = CombineJson(JsonObjListDemo, JsonObjList)
-	#print(FinishedJson[0])
+	print(FinishedJson[0])
 		
 main("C:/source/mednickdb/temp/DinklemannLab")#CAPStudy/")#SpencerLab/")#
