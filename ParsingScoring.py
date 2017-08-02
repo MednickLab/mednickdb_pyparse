@@ -1,5 +1,5 @@
 import pandas as pd
-import nme
+import mne
 import numpy
 import datetime
 import ParsingPandas
