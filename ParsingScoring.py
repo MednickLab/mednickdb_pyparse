@@ -8,6 +8,12 @@ import requests
 import json
 import os 
 
+def EDF_file_HYP(file):
+	EDF_file = mne.io.read_raw_edf(file,stim_channel='auto', preload=True)
+	#got array of (starttime, duration, stage)
+	Cycles = mne.io.get_edf_events(EDF_file)
+	#need to save into JSON object sampled every 30 sec --> epoch time
+
 
 def getAllFilesInTree(dirPath):
     _files = []
@@ -93,7 +99,9 @@ def BasicScoreFile(file):
 		JasonObj["epochstage"].append(temp[0])
 	return JasonObj	
 
-# Type 1
+# Type 1		Example: SpencerLab
+#these files give time in seconds in 30 sec interval
+#start of sleep time is given in demographic file
 def LatTypeScoreFile(file):
 	JasonObj = {}
 	JasonObj["Type"] = "1"
@@ -108,6 +116,7 @@ def LatTypeScoreFile(file):
 		temp[-1] = temp[-1].strip('\n')
 		JasonObj["epochstage"].append(temp[-1])
 		time = temp[0]
+		time = int(time) / 60 
 		JasonObj["epochstarttime"].append(time)		
 	return JasonObj	
 
@@ -163,12 +172,7 @@ def MakeJsonObj(file):
 		temp = temp[0].split('\\')
 		temp = temp[-1].split('ics_')
 		temp = temp[-1]
-		#visit = 1
-		if '_P' in temp: 
-			temp = temp.split('_')
-			#visit = temp[-1]
-			temp = temp[0]
-			dict = {}
+		
 		returningList = []
 		for i in range(len(JsonList)):
 			if "subjectID" not in JsonList[i]:
@@ -205,16 +209,22 @@ def MakeJsonObj(file):
 		holder = file.split('.')
 		holder = holder[0].split('\\')
 		if not "subjectID" in JSON.keys():
-			JSON["subjectID"] = holder[-1]
+			VisitAndSubID = holder[-1].split('_')
+			if VisitAndSubID[0] != VisitAndSubID[-1]:
+				JSON["visit"] = VisitAndSubID[1][5:]
+			else:
+				JSON["visit"] = 1
+							
+			JSON["subjectID"] = VisitAndSubID[0][5:]
 		JSON["studyID"] = holder[-3]
 		if isinstance(JSON["subjectID"],str):
 			JSON["subjectID"].strip(' ')
 			JSON["subjectID"] = JSON["subjectID"].lower()
 		return JSON
 	
-	#EDF files
+	#EDF files Open HERE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	elif file.endswith(".edf"):
-		EDF_file = mne.io.read_raw_edf(file, preload=True)
+		EDF_file = mne.io.read_raw_edf(file, ,preload=True)
 	
 	return 1
 
@@ -234,25 +244,41 @@ def CombineJson(Demo, Score):
 					
 					#type 0 files have epoch timestamps we add it now
 					if temp["Type"] == '0':
-							temp["epochstarttime"] = []
-							#print(temp.keys())
-							if "startime" in temp.keys():
-								temp["epochstarttime"].append(StringTimetoEpoch(temp["startime"]))
-							elif "starttime" in temp.keys():
-								temp["epochstarttime"].append(StringTimetoEpoch(temp["starttime"]))
-							for samples in range(len(temp["epochstage"]) - 1):
-								epochTime = temp["epochstarttime"][samples] + .5
-								if epochTime > 1439.5:
-									epochTime = 0
-								temp["epochstarttime"].append(epochTime)
+						temp["epochstarttime"] = []
+						#print(temp.keys())
+						if "startime" in temp.keys():
+							temp["epochstarttime"].append(StringTimetoEpoch(temp["startime"]))
+						elif "starttime" in temp.keys():
+							temp["epochstarttime"].append(StringTimetoEpoch(temp["starttime"]))
+						for samples in range(len(temp["epochstage"]) - 1):
+							epochTime = temp["epochstarttime"][samples] + .5
+							if epochTime >= 1440:
+								epochTime = 0
+							temp["epochstarttime"].append(epochTime)
+					#type 1 files need to add the time sleeping to start time from demographics file data
+					elif temp["Type"] == '1':
+						StartTime = 0
+						if "startime" in temp.keys():
+							StartTime = StringTimetoEpoch(temp["startime"])
+						elif "starttime" in temp.keys():
+							StartTime = StringTimetoEpoch(temp["starttime"])
+						
+						for index in range(len(temp["epochstarttime"])):
+							
+							CheckOver = temp["epochstarttime"][index] + StartTime
+							if CheckOver >= 1440:
+								CheckOver = CheckOver - 1440
+							
+							temp["epochstarttime"][index] = CheckOver
 					ReturnJsonList.append(temp)
 					Found = True
 				#else:
-					#print(str(Demo[i]["subjectID"]) + ' ' + str(Score[j]["subjectID"]))
+				#	print(str(Demo[i]["subjectID"]) + ' ' + str(Score[j]["subjectID"]))
 			
 				
 		if Found == False:
 			print("no match found for: " + str(Demo[i]["studyID"]) + ", " + str(Demo[i]["subjectID"]))
+			
 	return ReturnJsonList
 		
 #Main
@@ -285,4 +311,4 @@ def main(file):
 	FinishedJson = CombineJson(JsonObjListDemo, JsonObjList)
 	print(FinishedJson[0])
 		
-main("C:/source/mednickdb/temp/DinklemannLab")#CAPStudy/")#SpencerLab/")#
+main("C:/source/mednickdb/temp/SpencerLab/")#DinklemannLab")#CAPStudy/")#
