@@ -10,7 +10,7 @@ def EdfParse(path = None):
       EDF_file = mne.io.read_raw_edf(sys.argv[1])
       path = sys.argv[1]
    else: 
-      EDF_file = mne.io.read_raw_edf(path)
+      EDF_file = mne.io.read_raw_edf(path, preload=True)
    #splits the fileName into list of strings seperated by \
    #[-1] takes the last string in the list which is the file name
    NameOfFile = (path.split('\\')[-1])
@@ -21,7 +21,8 @@ def EdfParse(path = None):
 
 
    edfDictionary = {}
-   
+   print(EDF_file.info)
+   print(EDF_file.annotations)
    edfDictionary['bads'] = EDF_file.info["bads"]
    edfDictionary['ch_names'] = EDF_file.ch_names
    edfDictionary['highpass'] = EDF_file.info["highpass"]
@@ -42,6 +43,6 @@ def EdfParse(path = None):
 def main (File_to_Parse = None):
    EdfParse(File_to_Parse)
 
-#main()
+main("C:/source/mednickdb/temp/Future15_scoredew.edf")#Copy of PAI_2019.edf")#
 
 
