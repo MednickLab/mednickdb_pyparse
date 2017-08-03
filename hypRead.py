@@ -37,7 +37,7 @@ def hypRead(path = None):
         interval+= 30
         jsonObj["epochstage"].append(stage[-1])
         jsonObj["epochstarttime"].append(interval)
-        durationOfStage -= 30
+        lastDuration -= 30
 
 
     print(len(jsonObj["epochstage"]))
