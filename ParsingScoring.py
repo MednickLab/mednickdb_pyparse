@@ -8,6 +8,8 @@ import requests
 import json
 import os 
 
+subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid","subID", "SUBID", "SubID","Subject ID", "subject id"]
+
 def EDF_file_Hyp(path):
 	EDF_file = mne.io.read_raw_edf(path,stim_channel = 'auto' , preload = True)
 	#splits the fileName into list of strings seperated by \
@@ -206,23 +208,23 @@ def FullScoreFile(file):
 def GetSubIDandStudyID(filePath, CurrentDict):
 	holder = filePath.split('.')
 	holder = holder[0].split('\\')
-	if not "subjectID" in CurrentDict.keys():
+	if not "subjectid" in CurrentDict.keys():
 		VisitAndSubID = holder[-1].split('_')
 		if VisitAndSubID[0] != VisitAndSubID[-1]:
-			CurrentDict["visit"] = VisitAndSubID[1][5:]
+			CurrentDict["visitid"] = VisitAndSubID[1][5:]
 		else:
-			CurrentDict["visit"] = 1
+			CurrentDict["visitid"] = 1
 						
-		CurrentDict["subjectID"] = VisitAndSubID[0][5:]
-	CurrentDict["studyID"] = holder[-3]
-	if isinstance(CurrentDict["subjectID"],str):
-		CurrentDict["subjectID"].strip(' ')
-		CurrentDict["subjectID"] = CurrentDict["subjectID"].lower()
+		CurrentDict["subjectid"] = VisitAndSubID[0][5:]
+	CurrentDict["studyid"] = holder[-3]
+	if isinstance(CurrentDict["subjectid"],str):
+		CurrentDict["subjectid"].strip(' ')
+		CurrentDict["subjectid"] = CurrentDict["subjectid"].lower()
 	return CurrentDict
 	
 
 #gets the file reads it using appropriate read method then calls appropriate parse function 
-#does fine tuning for jason obj to uniform include subjectID and studyID	
+#does fine tuning for jason obj to uniform include subjectID and studyid	
 def MakeJsonObj(file):
 	#demographic Files
 	if file.endswith("xls") or file.endswith("xlsx") or file.endswith(".csv"):
@@ -230,7 +232,7 @@ def MakeJsonObj(file):
 		JsonList = ParsingPandas.main(file)
 		for i in range(len(JsonList)):
 			JsonList[i] = json.loads(JsonList[i])
-		#add studyID from name of file
+		#add studyid from name of file
 		temp = file.split('.')
 		temp = temp[0].split('\\')
 		temp = temp[-1].split('ics_')
@@ -238,19 +240,21 @@ def MakeJsonObj(file):
 		
 		returningList = []
 		for i in range(len(JsonList)):
-			if "subjectID" not in JsonList[i]:
-				if "subid" in JsonList[i]:
-					JsonList[i]["subjectID"] = JsonList[i]["subid"]
-					JsonList[i].pop("subid",None)
-				elif "Subject" in JsonList[i]:
-					JsonList[i]["subjectID"] = JsonList[i]["Subject"]
-					JsonList[i].pop("Subject",None)
-				else:
-					JsonList[i]["subjectID"] = 'N/A'
-				if isinstance(JsonList[i]["subjectID"],str):
-					JsonList[i]["subjectID"] = JsonList[i]["subjectID"].lower()
-			JsonList[i]["studyID"] = temp
-			#JsonList[i]["visitID"] = visit
+			if "subjectid" not in JsonList[i]:
+				#checks for all the common different spellings of subjectid and casts it to subjectid in dict
+				for spell in subidspellings:
+					if spell in JsonList[i]:
+						JsonList[i]["subjectid"] = JsonList[i][spell]
+				#subjectid becomes N/A if comon spelling for subjectid not found
+				if "subjectid" not in JsonList[i]:
+					JsonList[i]["subjectid"] = 'N/A'
+				
+				#if subject id is a word makes it into all lowercase
+				if isinstance(JsonList[i]["subjectid"],str):
+					JsonList[i]["subjectid"] = JsonList[i]["subjectid"].lower()
+		
+			JsonList[i]["studyid"] = temp
+			#JsonList[i]["visitid"] = visit
 		
 		return JsonList
 
@@ -268,7 +272,7 @@ def MakeJsonObj(file):
 		else:
 			print("other")
 
-		#add studyID and subectID to JSON for scoring
+		#add studyid and subectID to JSON for scoring
 		JSON = GetSubIDandStudyID(file,JSON)
 		return JSON
 	
@@ -277,7 +281,7 @@ def MakeJsonObj(file):
 		JSON = {}
 		JSON = EDF_file_Hyp(file)
 
-		#add studyID and subectID to JSON for scoring
+		#add studyid and subectID to JSON for scoring
 		JSON = GetSubIDandStudyID(file,JSON)		
 		return JSON	
 	return 1
@@ -289,10 +293,10 @@ def CombineJson(Demo, Score):
 	for i in range(len(Demo)):
 		Found = False
 		for j in range(len(Score)):
-			#print(Demo[i]["studyID"] + ' ' + Score[j]["studyID"])
-			if Demo[i]["studyID"] == Score[j]["studyID"]:
-				#print(str(Demo[i]["subjectID"]) + ' ' + str(Score[j]["subjectID"]))
-				if  str(Demo[i]["subjectID"]) == str(Score[j]["subjectID"]):
+			#print(Demo[i]["studyid"] + ' ' + Score[j]["studyid"])
+			if Demo[i]["studyid"] == Score[j]["studyid"]:
+				#print(str(Demo[i]["subjectid"]) + ' ' + str(Score[j]["subjectid"]))
+				if  str(Demo[i]["subjectid"]) == str(Score[j]["subjectid"]):
 					#print("MATCH 2")
 					temp = {**Demo[i],**Score[j]}
 					
@@ -327,11 +331,11 @@ def CombineJson(Demo, Score):
 					ReturnJsonList.append(temp)
 					Found = True
 				#else:
-				#	print(str(Demo[i]["subjectID"]) + ' ' + str(Score[j]["subjectID"]))
+				#	print(str(Demo[i]["subjectid]) + ' ' + str(Score[j]["subjectid"]))
 			
 				
 		if Found == False:
-			print("no match found for: " + str(Demo[i]["studyID"]) + ", " + str(Demo[i]["subjectID"]))
+			print("no match found for: " + str(Demo[i]["studyid"]) + ", " + str(Demo[i]["subjectid"]))
 			
 	return ReturnJsonList
 		
@@ -375,17 +379,12 @@ def main(file):
 	for Object in FinishedJson:
 		#study_subid_visit_session     <-- session not added yet
 		if "session" in Object.keys():
-			filename =  directory + '/' + str(Object["studyID"]) +  "_subjectID" + str(Object["subjectID"]) + "_visit" + str(Object["visit"]) + "_session" +str(Object["session"]) + ".json"
+			filename =  directory + '/' + str(Object["studyid"]) +  "_subjectid" + str(Object["subjectid"]) + "_visit" + str(Object["visitid"]) + "_session" +str(Object["session"]) + ".json"
 		else:
-			filename =  directory + '/' + str(Object["studyID"]) +  "_subjectID" + str(Object["subjectID"]) + "_visit" + str(Object["visit"])+ ".json"
+			filename =  directory + '/' + str(Object["studyid"]) +  "_subjectid" + str(Object["subjectid"]) + "_visit" + str(Object["visitid"])+ ".json"
 		jsonfile = open(filename,'w')
 		json.dump(Object,jsonfile)
 		
-<<<<<<< HEAD
 
 #EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
 main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
-=======
-#EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
-main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
->>>>>>> 269f3f9aca5a590f716b8ae8a3a6ed2d564eaeb4
