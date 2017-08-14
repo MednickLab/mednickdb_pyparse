@@ -9,7 +9,7 @@ import json
 import os 
 
 def EDF_file_Hyp(path):
-	EDF_file = mne.io.read_raw_edf(path, stim_channel = 'auto', preload = True)
+	EDF_file = mne.io.read_raw_edf(path,stim_channel = 'auto' , preload = True)
 	#splits the fileName into list of strings seperated by \
 	#[-1] takes the last string in the list which is the file name
 	NameOfFile = (path.split('\\')[-1])
@@ -373,14 +373,14 @@ def main(file):
 	if not os.path.exists(directory):
 		os.mkdir(directory)
 	for Object in FinishedJson:
-		filename =  directory + '/' + str(Object["subjectID"]) +  "_" + str(Object["studyID"]) + ".json"
+		#study_subid_visit_session     <-- session not added yet
+		if "session" in Object.keys():
+			filename =  directory + '/' + str(Object["studyID"]) +  "_subjectID" + str(Object["subjectID"]) + "_visit" + str(Object["visit"]) + "_session" +str(Object["session"]) + ".json"
+		else:
+			filename =  directory + '/' + str(Object["studyID"]) +  "_subjectID" + str(Object["subjectID"]) + "_visit" + str(Object["visit"])+ ".json"
 		jsonfile = open(filename,'w')
 		json.dump(Object,jsonfile)
 		
-<<<<<<< HEAD
 
 #EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
 main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
-=======
-main("C:/source/mednickdb/temp/SpencerLab/")#DinklemannLab")#CAPStudy/")#
->>>>>>> e24b0523121f050b1e72620898ca17640651d3d5
