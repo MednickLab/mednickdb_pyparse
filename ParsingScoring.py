@@ -385,6 +385,12 @@ def main(file):
 		jsonfile = open(filename,'w')
 		json.dump(Object,jsonfile)
 		
+<<<<<<< HEAD
 
 #EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
 main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
+=======
+#EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
+main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
+
+>>>>>>> 5f508f95fe0a790bc808d9d6c4fef0c1d252a41e
