@@ -9,7 +9,7 @@
         SecondLevel: must contain demographics file and folder "scoringfiles" which contain the ata for scoring files
         ThirdLevel: must contain only scoring files and no other folders or files
   #### Function:
-    1) goes through all files of the path to a folder an its subfolders given to main (must give absolute path to folder)
+    1) goes through all files of the path to a folder an its subfolders given to main(must give absolute path to folder)
     2) links the demographics data to appropriate scoring files and creates uniform Json objects
     3) stores each subject as a different Json file in newly created or exisiting directory "jsonObject" as 
     "[subjectID]_[studyID].json"
