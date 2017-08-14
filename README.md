@@ -11,5 +11,6 @@
   #### Function:
     1) goes through all files of the path to a folder an its subfolders given to main (must give absolute path to folder)
     2) links the demographics data to appropriate scoring files and creates uniform Json objects
-    3) stores each subject as a different Json file in newly created or exisiting directory "jsonObject" as "[subjectID]_[studyID].json"
+    3) stores each subject as a different Json file in newly created or exisiting directory "jsonObject" as 
+    "[subjectID]_[studyID].json"
               
