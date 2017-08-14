@@ -8,12 +8,54 @@ import requests
 import json
 import os 
 
-def EDF_file_HYP(file):
-	EDF_file = mne.io.read_raw_edf(file,stim_channel='auto', preload=True)
-	#got array of (starttime, duration, stage)
-	Cycles = mne.io.get_edf_events(EDF_file)
-	#need to save into JSON object sampled every 30 sec --> epoch time
+def EDF_file_Hyp(path):
+	EDF_file = mne.io.read_raw_edf(path, stim_channel = 'auto', preload = True)
+	#splits the fileName into list of strings seperated by \
+	#[-1] takes the last string in the list which is the file name
+	NameOfFile = (path.split('\\')[-1])
 
+	jsonObj = {}
+	jsonObj["epochstage"] = []
+	jsonObj["epochstarttime"] = []
+	print (EDF_file.info)
+	TimeAndStage = mne.io.get_edf_events(EDF_file)
+
+	StartTime = 0
+	for i in range(len(TimeAndStage) - 1):
+		#calculate time for start of next stage
+		EndTime = TimeAndStage[i + 1][0] - TimeAndStage[i][0]
+		#use given duration of current stage
+		Duration = TimeAndStage[i][1]
+		
+		j = 0
+		while j  < EndTime:
+			# append NaN to json objct as epoch stage if duration of a stage  
+			# ends before the start of next stage
+			# ***We do this because some of the data may not correlate to eachother
+			if j <= Duration:	
+				jsonObj["epochstage"].append(StartTime)
+			else:
+				print("was in NaN")
+				print(EndTime)
+				print(Duration)
+				jsonObj["epochstage"].append("NaN")
+			
+			
+			jsonObj["epochstarttime"].append(TimeAndStage[i][2])
+			StartTime = StartTime + .5
+			j = j + 30
+	
+	lastInterval = TimeAndStage[-1][0] + TimeAndStage[-1][1]		
+	Time = TimeAndStage[-1][0]
+	while Time < lastInterval: 
+		jsonObj["epochstage"].append(StartTime)
+		jsonObj["epochstarttime"].append(TimeAndStage[-1][2])
+		StartTime = StartTime + .5
+		
+	print(len(jsonObj))
+	print (jsonObj)
+	print("Should Last Until " + str(lastInterval/60))
+	return jsonObj
 
 def getAllFilesInTree(dirPath):
     _files = []
@@ -64,6 +106,7 @@ def EpochtoStringTime(time):
 	Min = time % 60
 	time = time / 60
 	TotalTime = str(time) + ':' + str(Min) + ":" + str(Sec)
+	
 	
 #demographics file contains te data you would need fro the other one
 #in the name of the demographics file it tells you which file to access for its data type
@@ -158,6 +201,26 @@ def FullScoreFile(file):
 					EventPos = i
 	return JasonObj
 	
+	
+
+def GetSubIDandStudyID(filePath, CurrentDict):
+	holder = filePath.split('.')
+	holder = holder[0].split('\\')
+	if not "subjectID" in CurrentDict.keys():
+		VisitAndSubID = holder[-1].split('_')
+		if VisitAndSubID[0] != VisitAndSubID[-1]:
+			CurrentDict["visit"] = VisitAndSubID[1][5:]
+		else:
+			CurrentDict["visit"] = 1
+						
+		CurrentDict["subjectID"] = VisitAndSubID[0][5:]
+	CurrentDict["studyID"] = holder[-3]
+	if isinstance(CurrentDict["subjectID"],str):
+		CurrentDict["subjectID"].strip(' ')
+		CurrentDict["subjectID"] = CurrentDict["subjectID"].lower()
+	return CurrentDict
+	
+
 #gets the file reads it using appropriate read method then calls appropriate parse function 
 #does fine tuning for jason obj to uniform include subjectID and studyID	
 def MakeJsonObj(file):
@@ -206,26 +269,17 @@ def MakeJsonObj(file):
 			print("other")
 
 		#add studyID and subectID to JSON for scoring
-		holder = file.split('.')
-		holder = holder[0].split('\\')
-		if not "subjectID" in JSON.keys():
-			VisitAndSubID = holder[-1].split('_')
-			if VisitAndSubID[0] != VisitAndSubID[-1]:
-				JSON["visit"] = VisitAndSubID[1][5:]
-			else:
-				JSON["visit"] = 1
-							
-			JSON["subjectID"] = VisitAndSubID[0][5:]
-		JSON["studyID"] = holder[-3]
-		if isinstance(JSON["subjectID"],str):
-			JSON["subjectID"].strip(' ')
-			JSON["subjectID"] = JSON["subjectID"].lower()
+		JSON = GetSubIDandStudyID(file,JSON)
 		return JSON
 	
 	#EDF files Open HERE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 	elif file.endswith(".edf"):
-		EDF_file = mne.io.read_raw_edf(file, ,preload=True)
-	
+		JSON = {}
+		JSON = EDF_file_Hyp(file)
+
+		#add studyID and subectID to JSON for scoring
+		JSON = GetSubIDandStudyID(file,JSON)		
+		return JSON	
 	return 1
 
 #Demo is a list of dictionary from demographic files
@@ -307,8 +361,22 @@ def main(file):
 			#print(JsonObj)
 			for i in JsonObj:
 				JsonObjListDemo.append(i)
+		
+	#print(JsonObjList)
 	#call function to combine the lists into one json obj
 	FinishedJson = CombineJson(JsonObjListDemo, JsonObjList)
-	print(FinishedJson[0])
+	#print(FinishedJson[0])
+		#save each object(patient) as own file 
+	#create a folder in original file path
+	#save all objects in folder as file
+	directory = file + "/jsonObjects"
+	if not os.path.exists(directory):
+		os.mkdir(directory)
+	for Object in FinishedJson:
+		filename =  directory + '/' + str(Object["subjectID"]) +  "_" + str(Object["studyID"]) + ".json"
+		jsonfile = open(filename,'w')
+		json.dump(Object,jsonfile)
 		
-main("C:/source/mednickdb/temp/SpencerLab/")#DinklemannLab")#CAPStudy/")#
+
+#EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
+main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
