@@ -9,6 +9,7 @@ import json
 import os 
 
 subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid","subID", "SUBID", "SubID","Subject ID", "subject id"]
+starttimespellings = ["starttime","startime","start time", "Start Time", "Start"]
 
 def EDF_file_Hyp(path):
 	EDF_file = mne.io.read_raw_edf(path,stim_channel = 'auto' , preload = True)
@@ -304,30 +305,30 @@ def CombineJson(Demo, Score):
 					if temp["Type"] == '0':
 						temp["epochstarttime"] = []
 						#print(temp.keys())
-						if "startime" in temp.keys():
-							temp["epochstarttime"].append(StringTimetoEpoch(temp["startime"]))
-						elif "starttime" in temp.keys():
-							temp["epochstarttime"].append(StringTimetoEpoch(temp["starttime"]))
+						for spell in starttimespellings:
+							if spell in temp.keys():
+								temp["epochstarttime"].append(StringTimetoEpoch(temp[spell]))
+
 						for samples in range(len(temp["epochstage"]) - 1):
 							epochTime = temp["epochstarttime"][samples] + .5
 							if epochTime >= 1440:
 								epochTime = 0
 							temp["epochstarttime"].append(epochTime)
+					
 					#type 1 files need to add the time sleeping to start time from demographics file data
 					elif temp["Type"] == '1':
 						StartTime = 0
-						if "startime" in temp.keys():
-							StartTime = StringTimetoEpoch(temp["startime"])
-						elif "starttime" in temp.keys():
-							StartTime = StringTimetoEpoch(temp["starttime"])
 						
+						for spell in starttimespellings:
+							if spell in temp.keys():
+								StartTime = StringTimetoEpoch(temp[spell])
+								
 						for index in range(len(temp["epochstarttime"])):
-							
 							CheckOver = temp["epochstarttime"][index] + StartTime
 							if CheckOver >= 1440:
 								CheckOver = CheckOver - 1440
-							
 							temp["epochstarttime"][index] = CheckOver
+					
 					ReturnJsonList.append(temp)
 					Found = True
 				#else:
@@ -385,12 +386,6 @@ def main(file):
 		jsonfile = open(filename,'w')
 		json.dump(Object,jsonfile)
 		
-<<<<<<< HEAD
-
-#EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
-main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
-=======
 #EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
 main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
 
->>>>>>> 5f508f95fe0a790bc808d9d6c4fef0c1d252a41e
