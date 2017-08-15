@@ -1,13 +1,10 @@
 import pandas as pd
 import mne
-import numpy
-import datetime
 import ParsingPandas
-#import xlrd
-import requests
 import json
 import os 
 import sys
+
 subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid","subID", "SUBID", "SubID","Subject ID", "subject id", "ID"]
 starttimespellings = ["starttime","startime","start time", "Start Time", "Start"]
 
@@ -20,7 +17,7 @@ def EDF_file_Hyp(path):
 	jsonObj = {}
 	jsonObj["epochstage"] = []
 	jsonObj["epochstarttime"] = []
-	print (EDF_file.info)
+	
 	TimeAndStage = mne.io.get_edf_events(EDF_file)
 
 	StartTime = 0
@@ -38,9 +35,6 @@ def EDF_file_Hyp(path):
 			if j <= Duration:	
 				jsonObj["epochstage"].append(StartTime)
 			else:
-				print("was in NaN")
-				print(EndTime)
-				print(Duration)
 				jsonObj["epochstage"].append("NaN")
 			
 			
@@ -55,19 +49,14 @@ def EDF_file_Hyp(path):
 		jsonObj["epochstarttime"].append(TimeAndStage[-1][2])
 		StartTime = StartTime + .5
 		
-	print(len(jsonObj))
-	print (jsonObj)
-	print("Should Last Until " + str(lastInterval/60))
 	return jsonObj
 
 def getAllFilesInTree(dirPath):
     _files = []
     for folder, subfolders, files in os.walk(dirPath):
-        #print(files)
         for _file in files:
             filePath = os.path.join(os.path.abspath(folder), _file)
             _files.append(filePath)
-    #print(_files)
     return _files
 	
 
@@ -78,15 +67,12 @@ def Parsing(PandaFile):
 
 	output_dict = []
 	for sub_data in PandaFile.iterrows():
-		#print(json.loads(sub_data[1].to_json()))
 		output_dict.append(sub_data[1].to_json())
-	#print(output_dict[-1])
 	return output_dict
 
 				    	  
 
 def StringTimetoEpoch(time):
-	#print(time)
 	time = time.replace('.',':')
 	temp = time.split(":")
 	hours = int(temp[0])
@@ -184,9 +170,7 @@ def FullScoreFile(file):
 	for line in file:
 		if StartSplit and line.strip() != '':
 			temp = line.split('\t')
-			#print(len(temp))
-			#print(EventPos)
-			#print(file)
+			
 			if len(temp) > EventPos and temp[EventPos].find("MCAP") == -1:
 				JasonObj["epochstage"].append(temp[SleepStagePos])
 				time = StringTimetoEpoch(temp[TimePos])
@@ -259,7 +243,7 @@ def MakeJsonObj(file):
 		
 		return JsonList
 
-	#these are the scoring files
+	#these are the scoring files (txt)
 	elif file.endswith(".txt"):
 		JSON = {}
 		temp = open(file, 'r')
@@ -277,7 +261,7 @@ def MakeJsonObj(file):
 		JSON = GetSubIDandStudyID(file,JSON)
 		return JSON
 	
-	#EDF files Open HERE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+	#EDF+ files which contain scoring data
 	elif file.endswith(".edf"):
 		JSON = {}
 		JSON = EDF_file_Hyp(file)
@@ -291,49 +275,45 @@ def MakeJsonObj(file):
 #Score is  list of dictionar from all score files
 def CombineJson(Demo, Score):
 	ReturnJsonList = []
+	#this for loop goes through all the demographics data
 	for i in range(len(Demo)):
 		Found = False
+		#this for loop goes through all the scoring datas
 		for j in range(len(Score)):
-			#print(Demo[i]["studyid"] + ' ' + Score[j]["studyid"])
-			if Demo[i]["studyid"] == Score[j]["studyid"]:
-				#print(str(Demo[i]["subjectid"]) + ' ' + str(Score[j]["subjectid"]))
-				if  str(Demo[i]["subjectid"]) == str(Score[j]["subjectid"]):
-					#print("MATCH 2")
-					temp = {**Demo[i],**Score[j]}
+			#check if the studyid and subjectid of the data is the same
+			if Demo[i]["studyid"] == Score[j]["studyid"] and str(Demo[i]["subjectid"]) == str(Score[j]["subjectid"]):
+				temp = {**Demo[i],**Score[j]}
 					
-					#type 0 files have epoch timestamps we add it now
-					if temp["Type"] == '0':
-						temp["epochstarttime"] = []
-						#print(temp.keys())
-						for spell in starttimespellings:
-							if spell in temp.keys():
-								temp["epochstarttime"].append(StringTimetoEpoch(temp[spell]))
+				#type 0 files have epoch timestamps we add it now
+				if temp["Type"] == '0':
+					temp["epochstarttime"] = []
+					for spell in starttimespellings:
+						if spell in temp.keys():
+							temp["epochstarttime"].append(StringTimetoEpoch(temp[spell]))
 
-						for samples in range(len(temp["epochstage"]) - 1):
-							epochTime = temp["epochstarttime"][samples] + .5
-							if epochTime >= 1440:
-								epochTime = 0
-							temp["epochstarttime"].append(epochTime)
+					for samples in range(len(temp["epochstage"]) - 1):
+						epochTime = temp["epochstarttime"][samples] + .5
+						if epochTime >= 1440:
+							epochTime = 0
+						temp["epochstarttime"].append(epochTime)
 					
-					#type 1 files need to add the time sleeping to start time from demographics file data
-					elif temp["Type"] == '1':
-						StartTime = 0
+				#type 1 files need to add the time sleeping to start time from demographics file data
+				elif temp["Type"] == '1':
+					StartTime = 0
 						
-						for spell in starttimespellings:
-							if spell in temp.keys():
-								StartTime = StringTimetoEpoch(temp[spell])
+					for spell in starttimespellings:
+						if spell in temp.keys():
+							StartTime = StringTimetoEpoch(temp[spell])
 								
-						for index in range(len(temp["epochstarttime"])):
-							CheckOver = temp["epochstarttime"][index] + StartTime
-							if CheckOver >= 1440:
-								CheckOver = CheckOver - 1440
-							temp["epochstarttime"][index] = CheckOver
+					for index in range(len(temp["epochstarttime"])):
+						CheckOver = temp["epochstarttime"][index] + StartTime
+						if CheckOver >= 1440:
+							CheckOver = CheckOver - 1440
+						temp["epochstarttime"][index] = CheckOver
 					
-					ReturnJsonList.append(temp)
-					Found = True
-				#else:
-				#	print(str(Demo[i]["subjectid]) + ' ' + str(Score[j]["subjectid"]))
-			
+				ReturnJsonList.append(temp)
+				Found = True
+				
 				
 		if Found == False:
 			print("no match found for: " + str(Demo[i]["studyid"]) + ", " + str(Demo[i]["subjectid"]))
@@ -342,6 +322,10 @@ def CombineJson(Demo, Score):
 		
 #Main
 #main chooses which parsing function is called
+#Three methods of using the function
+#1) input the file path into main when called 
+#2) input the file path as the first index of the cmd line argument 
+#3) call main with no parameters and cmd line argument and manulally input when prompted
 def main(file = None):
 	if file == None:
 		if len(sys.argv) > 1:
@@ -352,16 +336,13 @@ def main(file = None):
 	#filesInTemp = getAllFilesInTree(testdir)
 	filelist = getAllFilesInTree(file)
 
-#cycle through the files and if you find one that is a __ run script
-#	print(filesInServerTemp)
-#	print(filesInTemp)
 	
 	#now we have a list of Json Objs made from all files in folder
 	#fist will contain all json obj from the score files
 	#second will contain all json objs from demographic files
 	JsonObjList = []
 	JsonObjListDemo = []
-	#print (file)
+
 	for files in filelist:
 		if ('scorefiles' in files) or not (('.txt' in files) or ('.edf' in files) or ('jsonObjects' in files) ):
 			JsonObj = MakeJsonObj(files)
@@ -370,15 +351,13 @@ def main(file = None):
 			elif isinstance(JsonObj,dict):
 				JsonObjList.append(JsonObj)
 			elif isinstance(JsonObj,list):
-				#print(JsonObj)
 				for i in JsonObj:
 					JsonObjListDemo.append(i)
 		
-	#print(JsonObjList)
 	#call function to combine the lists into one json obj
 	FinishedJson = CombineJson(JsonObjListDemo, JsonObjList)
-	#print(FinishedJson[0])
-		#save each object(patient) as own file 
+	
+	#save each object(patient) as own file 
 	#create a folder in original file path
 	#save all objects in folder as file
 	directory = file + "/jsonObjects"
@@ -393,7 +372,5 @@ def main(file = None):
 		jsonfile = open(filename,'w')
 		json.dump(Object,jsonfile)
 		
-#EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
-#main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
 main()
 
