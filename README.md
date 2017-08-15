@@ -2,6 +2,7 @@
 
 ### ParsingScoring.py
   #### Requirements:
+    - Libaries Needed: pandas, json, os, mne, requests, numpy
     - must download ParsingPandas.py due to the fact that ParsingScoring imports it
     - File structure must be as followed:
         Head: Folder containing all Folders for different studies and nothing else
@@ -12,5 +13,7 @@
     1) goes through all files of the path to a folder an its subfolders given to main(must give absolute path to folder)
     2) links the demographics data to appropriate scoring files and creates uniform Json objects
     3) stores each subject as a different Json file in newly created or exisiting directory "jsonObject" as 
-    "[subjectID]_[studyID].json"
+    "[subjectid]_studyid[studyid]_visit[visitid].json" or if the person has multiple sessions then the Json file will be
+    "[subjectid]_studyid[studyid]_visit[visitid]_session[sessionid].json"
+    
               
