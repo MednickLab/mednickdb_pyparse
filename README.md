@@ -5,10 +5,11 @@
     - Libaries Needed: pandas, json, os, mne, requests, numpy
     - must download ParsingPandas.py due to the fact that ParsingScoring imports it
     - File structure must be as followed:
-        Head: Folder containing all Folders for different studies and nothing else
-              - folder name must be name of the study
-        SecondLevel: must contain demographics file and folder "scoringfiles" which contain the ata for scoring files
-        ThirdLevel: must contain only scoring files and no other folders or files
+        Head: Folder containing all other directory for different studies and nothing else
+              * Directory names must be name of the study
+        One Before Leaf: must contain demographics file (.xls or .xlsx) and folder "scoringfiles" which contain the ata for scoring files
+        Leaf: must contain only scoring files and no other folders or files saved as .txt or .edf files
+              * EDF+ format is needed with hypnogram in anotation of the EDF+
   #### Function:
     1) goes through all files of the path to a folder an its subfolders given to main(must give absolute path to folder)
     2) links the demographics data to appropriate scoring files and creates uniform Json objects
