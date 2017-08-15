@@ -7,7 +7,7 @@
     - File structure must be as followed:
         Head: Folder containing all other directory for different studies and nothing else
               * Directory names must be name of the study
-        One Before Leaf: must contain demographics file (.xls or .xlsx) and folder "scoringfiles" which contain the ata for scoring files
+        One Before Leaf: must contain demographics file (.xls or .xlsx) and folder "scoringfiles" which contain the data for scoring files
         Leaf: must contain only scoring files and no other folders or files saved as .txt or .edf files
               * EDF+ format is needed with hypnogram in anotation of the EDF+
   #### Function:
