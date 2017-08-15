@@ -3,12 +3,12 @@ import mne
 import numpy
 import datetime
 import ParsingPandas
-import xlrd
+#import xlrd
 import requests
 import json
 import os 
-
-subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid","subID", "SUBID", "SubID","Subject ID", "subject id"]
+import sys
+subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid","subID", "SUBID", "SubID","Subject ID", "subject id", "ID"]
 starttimespellings = ["starttime","startime","start time", "Start Time", "Start"]
 
 def EDF_file_Hyp(path):
@@ -342,7 +342,13 @@ def CombineJson(Demo, Score):
 		
 #Main
 #main chooses which parsing function is called
-def main(file):    
+def main(file = None):
+	if file == None:
+		if len(sys.argv) > 1:
+			file = sys.argv[1]
+		else:
+			file = input("Enter absolute path to the head Directory containing the scorings folders: ")
+    
 	#filesInTemp = getAllFilesInTree(testdir)
 	filelist = getAllFilesInTree(file)
 
@@ -357,15 +363,16 @@ def main(file):
 	JsonObjListDemo = []
 	#print (file)
 	for files in filelist:
-		JsonObj = MakeJsonObj(files)
-		if isinstance(JsonObj, int):
-			print(files + " is not comprehendable")
-		elif isinstance(JsonObj,dict):
-			JsonObjList.append(JsonObj)
-		elif isinstance(JsonObj,list):
-			#print(JsonObj)
-			for i in JsonObj:
-				JsonObjListDemo.append(i)
+		if ('scorefiles' in files) or not (('.txt' in files) or ('.edf' in files) or ('jsonObjects' in files) ):
+			JsonObj = MakeJsonObj(files)
+			if isinstance(JsonObj, int):
+				print(files + " is not comprehendable")
+			elif isinstance(JsonObj,dict):
+				JsonObjList.append(JsonObj)
+			elif isinstance(JsonObj,list):
+				#print(JsonObj)
+				for i in JsonObj:
+					JsonObjListDemo.append(i)
 		
 	#print(JsonObjList)
 	#call function to combine the lists into one json obj
@@ -387,5 +394,6 @@ def main(file):
 		json.dump(Object,jsonfile)
 		
 #EDF_file_Hyp("C:/source/mednickdb/temp/KempST/scorefiles/subid1_visit1-Hypnogram.edf")#/01.edf")#
-main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
+#main("C:/source/mednickdb/temp/AllData")#/CAPStudy/")#SpencerLab/")#DinklemannLab")#
+main()
 
