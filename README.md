@@ -2,7 +2,7 @@
 
 ### ParsingScoring.py
   #### Requirements:
-    - Libaries Needed: pandas, json, os, mne, requests, numpy
+    - Libaries Needed: sys,pandas, json, os, mne
     - must download ParsingPandas.py due to the fact that ParsingScoring imports it
     - File structure must be as followed:
         Head: Folder containing all other directory for different studies and nothing else
