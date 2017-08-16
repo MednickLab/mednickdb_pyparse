@@ -4,11 +4,14 @@ import ParsingPandas
 import json
 import os 
 import sys
+import gc
+import xml.etree.ElementTree as ET
 
 subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid","subID", "SUBID", "SubID","Subject ID", "subject id", "ID"]
 starttimespellings = ["starttime","startime","start time", "Start Time", "Start"]
 
 def EDF_file_Hyp(path):
+	print(path)
 	EDF_file = mne.io.read_raw_edf(path,stim_channel = 'auto' , preload = True)
 	#splits the fileName into list of strings seperated by \
 	#[-1] takes the last string in the list which is the file name
@@ -19,7 +22,7 @@ def EDF_file_Hyp(path):
 	jsonObj["epochstarttime"] = []
 	
 	TimeAndStage = mne.io.get_edf_events(EDF_file)
-
+	
 	StartTime = 0
 	for i in range(len(TimeAndStage) - 1):
 		#calculate time for start of next stage
@@ -48,8 +51,35 @@ def EDF_file_Hyp(path):
 		jsonObj["epochstage"].append(StartTime)
 		jsonObj["epochstarttime"].append(TimeAndStage[-1][2])
 		StartTime = StartTime + .5
-		
+	
+	
+	#free memory
+	del EDF_file
+	del TimeAndStage
+	
 	return jsonObj
+
+#WORKING ON IT
+#XML files = scoring files need to parse it 
+#def XML_File(path):
+#	xml_data = open(path).read()
+#	root = ET.XML(xml_data)
+#	temp = []
+#	for i, child in enumerate(root):
+#		data = {}
+#		for subchild in child:
+#			stripped = subchild.tag.rstrip()
+#			data[stripped] = subchild.text
+#			temp.append(data)
+#	xml_as_pd = pd.DataFrame(temp)
+#	print (xml_as_pd)
+#	k = []
+#	for subdata in xml_as_pd.iterrows():
+#		k.append(subdata)
+#	#print (k)
+#	exit()
+#	return
+	
 
 def getAllFilesInTree(dirPath):
     _files = []
@@ -269,6 +299,16 @@ def MakeJsonObj(file):
 		#add studyid and subectID to JSON for scoring
 		JSON = GetSubIDandStudyID(file,JSON)		
 		return JSON	
+	
+#	elif file.endswith('.xml'):
+#		JSON = {}
+#		JSON = XML_File(file)
+#
+#		#add studyid and subectID to JSON for scoring
+#		JSON = GetSubIDandStudyID(file,JSON)		
+#		return JSON		
+	
+	
 	return 1
 
 #Demo is a list of dictionary from demographic files
@@ -317,44 +357,15 @@ def CombineJson(Demo, Score):
 				
 		if Found == False:
 			print("no match found for: " + str(Demo[i]["studyid"]) + ", " + str(Demo[i]["subjectid"]))
+
 			
 	return ReturnJsonList
 		
-#Main
-#main chooses which parsing function is called
-#Three methods of using the function
-#1) input the file path into main when called 
-#2) input the file path as the first index of the cmd line argument 
-#3) call main with no parameters and cmd line argument and manulally input when prompted
-def main(file = None):
-	if file == None:
-		if len(sys.argv) > 1:
-			file = sys.argv[1]
-		else:
-			file = input("Enter absolute path to the head Directory containing the scorings folders: ")
-    
-	#filesInTemp = getAllFilesInTree(testdir)
-	filelist = getAllFilesInTree(file)
-
-	
-	#now we have a list of Json Objs made from all files in folder
-	#fist will contain all json obj from the score files
-	#second will contain all json objs from demographic files
-	JsonObjList = []
-	JsonObjListDemo = []
-
-	for files in filelist:
-		if ('scorefiles' in files) or not (('.txt' in files) or ('.edf' in files) or ('jsonObjects' in files) ):
-			JsonObj = MakeJsonObj(files)
-			if isinstance(JsonObj, int):
-				print(files + " is not comprehendable")
-			elif isinstance(JsonObj,dict):
-				JsonObjList.append(JsonObj)
-			elif isinstance(JsonObj,list):
-				for i in JsonObj:
-					JsonObjListDemo.append(i)
-		
-	#call function to combine the lists into one json obj
+#Parameter JsonList created from one demographics file of a particular study
+#          JsonList created from all score files for the same study
+#		   file  is the absolute path where new directory jsonObjects will be created which contain the data from score+demographic
+def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
+		#call function to combine the lists into one json obj
 	FinishedJson = CombineJson(JsonObjListDemo, JsonObjList)
 	
 	#save each object(patient) as own file 
@@ -371,6 +382,57 @@ def main(file = None):
 			filename =  directory + '/' + str(Object["studyid"]) +  "_subjectid" + str(Object["subjectid"]) + "_visit" + str(Object["visitid"])+ ".json"
 		jsonfile = open(filename,'w')
 		json.dump(Object,jsonfile)
+	return
+
+
+#Main
+#main chooses which parsing function is called
+#Three methods of using the function
+#1) input the file path into main when called 
+#2) input the file path as the first index of the cmd line argument 
+#3) call main with no parameters and cmd line argument and manulally input when prompted
+def main(file = None):
+	if file == None:
+		if len(sys.argv) > 1:
+			file = sys.argv[1]
+		else:
+			file = input("Enter absolute path to the head Directory containing the scorings folders: ")
+    
+	#filesInTemp = getAllFilesInTree(testdir)
+	filelist = getAllFilesInTree(file)
+	
+	#now we have a list of Json Objs made from all files in folder
+	#fist will contain all json obj from the score files
+	#second will contain all json objs from demographic files
+	JsonObjList = []
+	JsonObjListDemo = []
+	
+	for files in filelist:
+		temp = {}
+		temp = GetSubIDandStudyID(files,temp)
+		# Need to set studyid of current study
+		#if study id changes it means we are in different study folder
+		#so we can connect the Json objects and create the json files
+		if ".xlsx" in files and files != filelist[0]:
+			CreateJsonFile(JsonObjListDemo, JsonObjList, file)	
+			CurentStudy = temp['studyid']
+			JsonObjListDemo = []
+			JsonObjList = []
+			gc.collect()
+			HitOnce = False
+				
+		if ('scorefiles' in files) or not (('.txt' in files) or ('.edf' in files) or ('jsonObjects' in files) ):
+			JsonObj = MakeJsonObj(files)
+			if isinstance(JsonObj, int):
+				print(files + " is not comprehendable")
+			elif isinstance(JsonObj,dict):
+				JsonObjList.append(JsonObj)
+			elif isinstance(JsonObj,list):
+				for i in JsonObj:
+					JsonObjListDemo.append(i)
 		
-main()
+
+	CreateJsonFile(JsonObjListDemo, JsonObjList, file)		
+		
+main() #'C:/source/mednickdb/temp/AllData/CCSHS')#AllData/ExampleMASSData')
 
