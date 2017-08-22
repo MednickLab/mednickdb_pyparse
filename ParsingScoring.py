@@ -402,7 +402,7 @@ def studyFolders(dirPath):
             holder = filePath.split('/')
             #Get study folder lab name position
             for i in range(len(holder)):
-                if(holder[i].find("scorefiles") != -1):
+                if((holder[i].find("scorefiles") != -1) or (holder[i].find("edf") != -1)):
                     studyFolderHead = i
                     break
             if(studyFolderHead == -1):
