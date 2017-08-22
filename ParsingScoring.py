@@ -394,29 +394,36 @@ def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
 def studyFolders(dirPath):
     _files = []
     studyFolders = []
+    #In case we are looking at a file that isn't in /scorefiles/
+    studyFolderHead = -1
     for folder, subfolders, files in os.walk(dirPath):
         for _file in files:
             filePath = os.path.join(os.path.abspath(folder), _file)
             holder = filePath.split('/')
             #Get study folder lab name position
             for i in range(len(holder)):
-                if(holder[i].find('_') != -1):
+                if(holder[i].find("scorefiles") != -1):
                     studyFolderHead = i
                     break
+            if(studyFolderHead == -1):
+                break
             location = ""
             #Get the study folder lab name
             for i in range(studyFolderHead):
                 if(i != 0):
                     location = location + '/' + holder[i]
-            #Append study folder to lab path
-            for i in range(len(holder)):
-                if(holder[i].find('_') != -1 and holder[i].find('.') == -1):
-                    studyFolder = location + '/' + holder[i]
-                    if(studyFolder not in studyFolders):
-                        studyFolders.append(studyFolder)
-                        break
+            #Append to list of study Folders
+            if(location not in studyFolders):
+                studyFolders.append(location)
+                break
+
+            studyFolderHead = -1
 
     return studyFolders
+
+#Go down to score file and save position in list
+#go to that position in list, appending beforehand items to a string
+#push that string to a list
 
 # Main
 # main chooses which parsing function is called
