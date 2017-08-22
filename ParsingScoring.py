@@ -229,19 +229,34 @@ def GetSubIDandStudyID(filePath, CurrentDict):
     holder = holder[0].split('\\')
     # @bdyetton: When parsing strings, its better to look for an explit substring and not rely on things being in a certain index position in the string
     # I have used the (non default) parse module because regex is a pain.
-    if not "subjectid" in CurrentDict.keys():  # bdyetton: not sure why this is needed, so leaving it here.
-        subjectid = parse('subjectid{}', filePath)
-        if subjectid:
-            CurrentDict["subjectid"] = subjectid[0]
-        else:
-            CurrentDict["subjectid"] = None
-
-        visitid = parse('visitid{}', filePath)
-        if visitid:
-            CurrentDict["visitid"] = visitid[0]  # Do not add a visit number if there is not one.
+    subjectid = holder[-1].split('subjectid')
+    subjectid = subjectid[-1].split('_visit')
+    CurrentDict["subjectid"] = subjectid[0]	
+    if 'visit' in filePath: 
+        CurrentDict["visitid"] = subjectid[-1]
+    else:
+        CurrentDict["visitid"] = 1
+    
+		
+#    if not "subjectid" in CurrentDict.keys():  # bdyetton: not sure why this is needed, so leaving it here.
+#        subjectid = parse('subjectid{}', filePath)
+#        print(filePath)
+#        print(subjectid)
+#        exit()
+#        if subjectid:
+#            CurrentDict["subjectid"] = subjectid[0]
+#        else:
+#            CurrentDict["subjectid"] = None
+#        visitid = parse('visitid{}', filePath)
+#        if visitid:
+#            CurrentDict["visitid"] = visitid[0]  # Do not add a visit number if there is not one.
 
     CurrentDict["studyid"] = holder[
         -3]  # This is not ideal, but i cannot see a simple way around it for now. Maybe i should add studyid to the files
+		
+#    print(CurrentDict['subjectid'])
+#    print(CurrentDict['studyid'])
+#    print(CurrentDict['visitid'])
     return CurrentDict
 
 
@@ -327,7 +342,8 @@ def CombineJson(Demo, Score):
         Found = False
         # this for loop goes through all the scoring datas
         for j in range(len(Score)):  # FIXME, what is j, what is it indexing over? be more specific
-            # check if the studyid and subjectid of the data is the same
+        #    print(Score[j]['subjectid'])
+			# check if the studyid and subjectid of the data is the same
             if Demo[i]["studyid"] == Score[j]["studyid"] and str(Demo[i]["subjectid"]) == str(Score[j]["subjectid"]):
                 temp = {**Demo[i], **Score[j]}  # FIXME temp what? be more specific
 
@@ -361,7 +377,7 @@ def CombineJson(Demo, Score):
 
                 ReturnJsonList.append(temp)
                 Found = True
-
+        #exit()
         if Found == False:
             print("no match found for: " + str(Demo[i]["studyid"]) + ", " + str(Demo[i]["subjectid"]))
 
@@ -371,7 +387,7 @@ def CombineJson(Demo, Score):
 # Parameter JsonList created from one demographics file of a particular study
 #          JsonList created from all score files for the same study
 #		   file  is the absolute path where new directory jsonObjects will be created which contain the data from score+demographic
-def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
+def save_json_file(JsonObjListDemo, JsonObjList, file):
     # call function to combine the lists into one json obj
     FinishedJson = CombineJson(JsonObjListDemo, JsonObjList)
 
@@ -402,44 +418,46 @@ def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
 # 3) call main with no parameters and cmd line argument and manulally input when prompted
 if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there are some comments on tips and improvements (just for the bits i have looked at)
     if len(sys.argv) > 1:
-        file = sys.argv[1]  # FIXME using file and files as variable names is confusing, be more specific
+        path = sys.argv[1]  # FIXME using file and files as variable names is confusing, be more specific
     else:
-        file = input("Enter absolute path to the head Directory containing the scorings folders: ")
+        path = input("Enter absolute path to the head Directory containing the scorings folders: ")
 
     # filesInTemp = getAllFilesInTree(testdir)
     filelist = getAllFilesInTree(
-        file)  # FIXME in the future, stick with PEP8 standard, i.e. variable names should be variable_names not variableNames
+        path)  # FIXME in the future, stick with PEP8 standard, i.e. variable names should be variable_names not variableNames
 
     # now we have (need?) a list of Json Objs made from all files in folder
     # fist will contain all json obj from the score files
     # second will contain all json objs from demographic files
     JsonObjList = []
     JsonObjListDemo = []
-
-    for files in filelist:  # FIXME files is a single element, and therefore it should be file (non pural)
+    FolerList = []
+    for file in filelist:  # FIXME files is a single element, and therefore it should be file (non pural)
+		#Get folder list here
+        FolderList = 
+		
+	for file in FolderList:	
         temp = {}
-        temp = GetSubIDandStudyID(files, temp)  # FIXME Do not use temp as a varible, there is always a more decriptive name
+        #temp = GetSubIDandStudyID(file, temp)  # FIXME Do not use temp as a varible, there is always a more decriptive name
         # Need to set studyid of current study
         # if study id changes it means we are in different study folder
         # so we can connect the Json objects and create the json files
         # FIXME i dont think this is a very safe move, there may be .xlsx files that do not represent a new study
-
-        if ".xlsx" in files and files != filelist[0]:
-            CreateJsonFile(JsonObjListDemo, JsonObjList, file)  # FIXME a more appropreate name would be save json file
-            CurentStudy = temp['studyid']  # FIXME whats this for? I cant see it used anywhere
+        for Study in FolderList:
+            if ('scorefiles' in file) or not (('.txt' in file) or ('.edf' in file) or ('jsonObjects' in file)):
+                JsonObj = MakeJsonObj(file)
+                if isinstance(JsonObj, int):
+                    print(file + " is not comprehendable")
+                elif isinstance(JsonObj, dict):
+                    JsonObjList.append(JsonObj)
+                elif isinstance(JsonObj, list):
+                    for i in JsonObj:
+                        JsonObjListDemo.append(i)
+						
+		    save_json_file(JsonObjListDemo, JsonObjList, path)  # FIXME a more appropreate name would be save json file
+            #CurentStudy = temp['studyid']  # FIXME whats this for? I cant see it used anywhere
             JsonObjListDemo = []
             JsonObjList = []
             gc.collect()
-            HitOnce = False
 
-        if ('scorefiles' in files) or not (('.txt' in files) or ('.edf' in files) or ('jsonObjects' in files)):
-            JsonObj = MakeJsonObj(files)
-            if isinstance(JsonObj, int):
-                print(files + " is not comprehendable")
-            elif isinstance(JsonObj, dict):
-                JsonObjList.append(JsonObj)
-            elif isinstance(JsonObj, list):
-                for i in JsonObj:
-                    JsonObjListDemo.append(i)
-
-    CreateJsonFile(JsonObjListDemo, JsonObjList, file)
+    save_json_file(JsonObjListDemo, JsonObjList, path)
