@@ -400,6 +400,10 @@ def studyFolders(dirPath):
         for _file in files:
             filePath = os.path.join(os.path.abspath(folder), _file)
             holder = filePath.split('/')
+            if(holder.find('/') != -1):
+                holder = filePath.split('/')
+            else:
+                holder = filePath.split('\')
             #Get study folder lab name position
             for i in range(len(holder)):
                 if((holder[i].find("scorefiles") != -1) or (holder[i].find("edf") != -1)):
