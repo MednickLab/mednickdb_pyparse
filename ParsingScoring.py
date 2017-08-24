@@ -441,7 +441,6 @@ def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
         jsonfile = open(filename, 'w')
         json.dump(Object, jsonfile)
     return
-
 def studyFolders(dirPath):
     _files = []
     studyFolders = []
@@ -450,8 +449,7 @@ def studyFolders(dirPath):
     for folder, subfolders, files in os.walk(dirPath):
         for _file in files:
             filePath = os.path.join(os.path.abspath(folder), _file)
-            holder = filePath.split('/')
-            if(holder.find('/') != -1):
+            if(filePath.find('/') != -1):
                 holder = filePath.split('/')
             else:
                 holder = filePath.split('\\')
@@ -473,8 +471,9 @@ def studyFolders(dirPath):
                 break
 
             studyFolderHead = -1
-
+            
     return studyFolders
+
 
 #Go down to score file and save position in list
 #go to that position in list, appending beforehand items to a string
