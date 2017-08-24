@@ -450,7 +450,11 @@ def studyFolders(dirPath):
     for folder, subfolders, files in os.walk(dirPath):
         for _file in files:
             filePath = os.path.join(os.path.abspath(folder), _file)
-            holder = filePath.split('\\')
+            holder = filePath.split('/')
+            if(holder.find('/') != -1):
+                holder = filePath.split('/')
+            else:
+                holder = filePath.split('\')
             #Get study folder lab name position
             for i in range(len(holder)):
                 if((holder[i].find("scorefiles") != -1) or (holder[i].find("edf") != -1)):
@@ -462,7 +466,7 @@ def studyFolders(dirPath):
             #Get the study folder lab name
             for i in range(studyFolderHead):
                 if(i != 0):
-                    location = location + '/' + holder[i]
+                    location = location + '\' + holder[i]
             #Append to list of study Folders
             if(location not in studyFolders):
                 studyFolders.append(location)
