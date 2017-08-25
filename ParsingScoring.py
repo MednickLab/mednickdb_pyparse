@@ -475,8 +475,6 @@ def studyFolders(dirPath):
 
     return studyFolders
 
-#FIX MAIN
-#Get rid of test comments and have ask for file head location again
 #Works with CAPStudy(kinda) and DinklemannLab
 def sleepStageMap(fileToMap,stageMap):
     if not(stageMap.endswith(".xlsx")):
@@ -531,8 +529,7 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
     if len(sys.argv) > 1:
         file = sys.argv[1]  # FIXME using file and files as variable names is confusing, be more specific
     else:
-        #file = input("Enter absolute path to the head Directory containing the scorings folders: ")
-        file = "/home/jesse/Desktop/DinklemannLab"
+        file = input("Enter absolute path to the head Directory containing the scorings folders: ")
     # filesInTemp = getAllFilesInTree(testdir)
     filelist = getAllFilesInTree(
         file)  # FIXME in the future, stick with PEP8 standard, i.e. variable names should be variable_names not variableNames
@@ -546,11 +543,6 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
     #print(file)
     FolderList = studyFolders(file)
     #print(FolderList)
-
-    #TEST
-    #testVar = sleepStageMap("/home/jesse/Desktop/StudiesToParse/CAPStudy/scorefiles/subjectid101.txt","/home/jesse/Desktop/StudiesToParse/CAPStudy/stagemap.xlsx")
-    testVar = sleepStageMap("/home/jesse/Desktop/StudiesToParse/DinklemannLab/DinklemannLab_Alice/scorefiles/subjectid5.txt","/home/jesse/Desktop/StudiesToParse/DinklemannLab/DinklemannLab_Alice/stagemap.xlsx")
-    #TEST
 
     for files in FolderList:# FIXME files is a single element, and therefore it should be file (non pural)
         Study = getAllFilesInTree(files)
