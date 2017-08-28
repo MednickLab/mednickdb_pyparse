@@ -486,37 +486,14 @@ def sleepStageMap(fileToMap,stageMap):
     mapDictionary = {}
 
     #Put keys and values into a dictionary
-    for i, row in df.iterrows():
-        #print(row['mapsfrom'], row['mapsto'])
-        mapDictionary[row['mapsfrom']] = row['mapsto']
-        keys.append(row['mapsfrom'])
+#    for i, row in df.iterrows():
+#        #print(row['mapsfrom'], row['mapsto'])
+#        mapDictionary[row['mapsfrom']] = row['mapsto']
+#        keys.append(row['mapsfrom'])
 
-    #For CAPStudy
-    if(fileToMap.endswith(".txt")):
-        textFile  = open(fileToMap, 'r')
-        #This wait variable is for the CAPStudy
-        #so that we don't get the part where the file
-        #says what events are included
-        #wait = True
-
-        for line in textFile:
-            #if(line.find("Location") != -1):
-            #    wait = False
-            #    continue
-            #if(wait):
-            #    continue
-
-            for i in reversed(keys):
-                if(line.find(str(i)) != -1):
-                    mappedStages.append(mapDictionary[i])
-                    break
-
-        textFile.close()
-        #print(mappedStages)
-
-    elif(fileToMap.endswith(".edf")):
-        EDF_file = mne.io.read_raw_edf(fileToMap)
-
+    
+    for i in range(fileToMap['epochstage']):
+        fileToMap['epochstage'][i] = stageMap[fileToMap['epochstage'][i]]
     return mappedStages
 
 # Main
@@ -581,7 +558,6 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
         JsonObjListDemo = []
         JsonObjList = []
         gc.collect()
-        HitOnce = False
 
 
     #CreateJsonFile(JsonObjListDemo, JsonObjList, file)
