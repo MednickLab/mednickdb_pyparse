@@ -13,7 +13,7 @@ subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "
 starttimespellings = ["starttime", "startime", "start time", "Start Time", "Start"]
 
 #characters that we will strip
-STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"	
+STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 
 def EDF_file_Hyp(path):
     EDF_file = mne.io.read_raw_edf(path, stim_channel= 'auto', preload=True)
@@ -90,17 +90,17 @@ def XMLParse(file):
     tree = ET.parse(file)
     root = tree.getroot()
     dictXML = XMLRepeter(root)
-    tempDict= {}	
+    tempDict= {}
     tempDict['epochstage'] = []
     tempDict['starttime'] = []
     tempDict['duration'] = []
-	
+
     for key in dictXML.keys():
         needToStrip = str(dictXML[key]).split(',')
         for i in range(len(needToStrip)):
             needToStrip[i] = needToStrip[i].lstrip(STRIP).rstrip(STRIP)
         dictXML[key] = needToStrip
-		
+
 	# Need to change this maybe	right now only includes the important stuff
 	# Need to fix the time
 	#get dictionary with sleepevent, start time, and duration
@@ -281,15 +281,15 @@ def GetSubIDandStudyID(filePath, CurrentDict):
     subjectid = subjectid[-1].split('_visit')
     visitid = subjectid[-1]
     subjectid = subjectid[0].split('-')
-    CurrentDict["subjectid"] = subjectid[0]	
-    if 'visit' in filePath: 
+    CurrentDict["subjectid"] = subjectid[0]
+    if 'visit' in filePath:
         CurrentDict["visitid"] = visitid
     else:
         CurrentDict["visitid"] = 1
 
     CurrentDict["studyid"] = holder[
         -3]  # This is not ideal, but i cannot see a simple way around it for now. Maybe i should add studyid to the files
-		
+
 #    print(CurrentDict['subjectid'])
 #    print(CurrentDict['studyid'])
 #    print(CurrentDict['visitid'])
@@ -356,11 +356,11 @@ def MakeJsonObj(file):
         # add studyid and subectID to JSON for scoring
         JSON = GetSubIDandStudyID(file, JSON)
         return JSON
-    
+
     elif file.endswith('.xml'):
         JSON = {}
         JSON = XMLParse(file)
-    
+
     	#add studyid and subectID to JSON for scoring
         JSON = GetSubIDandStudyID(file,JSON)
         #print(JSON['subjectid'])
@@ -453,7 +453,10 @@ def studyFolders(dirPath):
     for folder, subfolders, files in os.walk(dirPath):
         for _file in files:
             filePath = os.path.join(os.path.abspath(folder), _file)
-            holder = filePath.split('\\')
+            if(filePath.find('/') != -1):
+                holder = filePath.split('/')
+            else:
+                holder = filePath.split('\\')
             #Get study folder lab name position
             for i in range(len(holder)):
                 if((holder[i].find("scorefiles") != -1) or (holder[i].find("edf") != -1)):
@@ -465,7 +468,7 @@ def studyFolders(dirPath):
             #Get the study folder lab name
             for i in range(studyFolderHead):
                 if(i != 0):
-                    location = location + '/' + holder[i]
+                    location = location + '\\' + holder[i]
             #Append to list of study Folders
             if(location not in studyFolders):
                 studyFolders.append(location)
@@ -475,9 +478,26 @@ def studyFolders(dirPath):
 
     return studyFolders
 
-#Go down to score file and save position in list
-#go to that position in list, appending beforehand items to a string
-#push that string to a list
+#Works with CAPStudy(kinda) and DinklemannLab
+def sleepStageMap(fileToMap,stageMap):
+    if not(stageMap.endswith(".xlsx")):
+        print("Sleep Stage Map is not an excel file")
+
+    df = pd.read_excel(stageMap)
+    mappedStages = []
+    keys = []
+    mapDictionary = {}
+
+    #Put keys and values into a dictionary
+#    for i, row in df.iterrows():
+#        #print(row['mapsfrom'], row['mapsto'])
+#        mapDictionary[row['mapsfrom']] = row['mapsto']
+#        keys.append(row['mapsfrom'])
+
+    
+    for i in range(fileToMap['epochstage']):
+        fileToMap['epochstage'][i] = stageMap[fileToMap['epochstage'][i]]
+    return mappedStages
 
 # Main
 # main chooses which parsing function is called
@@ -490,7 +510,6 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
         file = sys.argv[1]  # FIXME using file and files as variable names is confusing, be more specific
     else:
         file = input("Enter absolute path to the head Directory containing the scorings folders: ")
-
     # filesInTemp = getAllFilesInTree(testdir)
     filelist = getAllFilesInTree(
         file)  # FIXME in the future, stick with PEP8 standard, i.e. variable names should be variable_names not variableNames
@@ -511,19 +530,19 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
         for Checking in Study:
             if 'scorefile' in Checking:
                 CheckEDFfolder = False
-                break        
-        for studyfile in Study: 
+                break
+        for studyfile in Study:
             #print(studyfile)
-            
+
 	        #temp = GetSubIDandStudyID(files, temp)  # FIXME Do not use temp as a varible, there is always a more decriptive name
             # Need to set studyid of current study
             # if study id changes it means we are in different study folder
             # so we can connect the Json objects and create the json files
             # FIXME i dont think this is a very safe move, there may be .xlsx files that do not represent a new study
-               
+
             if ('scorefiles' in studyfile ) or ('edfs' in studyfile and CheckEDFfolder) or ('Demographics' in studyfile) or ('stagemap' in studyfile):
                 JsonObj = MakeJsonObj(studyfile)
-                
+
                 if isinstance(JsonObj, int):
                     print(studyfile + " is not comprehendable")
                 elif 'scorefile' in studyfile:
@@ -542,8 +561,6 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
         JsonObjListDemo = []
         JsonObjList = []
         gc.collect()
-        HitOnce = False
 
-    
+
     #CreateJsonFile(JsonObjListDemo, JsonObjList, file)
-    
