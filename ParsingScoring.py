@@ -17,6 +17,7 @@ STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 
 def EDF_file_Hyp(path):
     EDF_file = mne.io.read_raw_edf(path, stim_channel= 'auto', preload=True)
+    
     # splits the fileName into list of strings seperated by \
     # [-1] takes the last string in the list which is the file name
     NameOfFile = (path.split('\\')[-1])
@@ -25,6 +26,8 @@ def EDF_file_Hyp(path):
     jsonObj["epochstage"] = []
     jsonObj["epochstarttime"] = []
     TimeAndStage = mne.io.get_edf_events(EDF_file)
+    print(EDF_file)
+    print(TimeAndStage)
     StartTime = 0
     for i in range(len(TimeAndStage) - 1):
         # calculate time for start of next stage
