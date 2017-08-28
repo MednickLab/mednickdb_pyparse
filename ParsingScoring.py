@@ -5,17 +5,18 @@ import json
 import os
 import sys
 import gc
-from parse import parse as parse
+#from parse import parse as parse
 import xml.etree.ElementTree as ET
 
 subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid", "subID", "SUBID", "SubID",
                   "Subject ID", "subject id", "ID"]
 starttimespellings = ["starttime", "startime", "start time", "Start Time", "Start"]
 
+#characters that we will strip
+STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 
 def EDF_file_Hyp(path):
-    print(path)
-    EDF_file = mne.io.read_raw_edf(path, stim_channel='auto', preload=True)
+    EDF_file = mne.io.read_raw_edf(path, stim_channel= 'auto', preload=True)
     # splits the fileName into list of strings seperated by \
     # [-1] takes the last string in the list which is the file name
     NameOfFile = (path.split('\\')[-1])
@@ -23,9 +24,7 @@ def EDF_file_Hyp(path):
     jsonObj = {}
     jsonObj["epochstage"] = []
     jsonObj["epochstarttime"] = []
-
     TimeAndStage = mne.io.get_edf_events(EDF_file)
-
     StartTime = 0
     for i in range(len(TimeAndStage) - 1):
         # calculate time for start of next stage
@@ -62,26 +61,71 @@ def EDF_file_Hyp(path):
 
 
 # WORKING ON IT
-# XML files = scoring files need to parse it
-# def XML_File(path):
-#	xml_data = open(path).read()
-#	root = ET.XML(xml_data)
-#	temp = []
-#	for i, child in enumerate(root):
-#		data = {}
-#		for subchild in child:
-#			stripped = subchild.tag.rstrip()
-#			data[stripped] = subchild.text
-#			temp.append(data)
-#	xml_as_pd = pd.DataFrame(temp)
-#	print (xml_as_pd)
-#	k = []
-#	for subdata in xml_as_pd.iterrows():
-#		k.append(subdata)
-#	#print (k)
-#	exit()
-#	return
+def XMLRepeter (node):
+    temp = {}
+    list = []
+    for child in node:
+        J = (XMLRepeter(child))
+        if len(J) != 0:
+            for key in J.keys():
+                if key in temp.keys():
+                    temp[key].append(J[key])
+                else:							#if J[key] != None:
+                    temp[key] = []
+                    temp[key].append(J[key])
+        dict = {child.tag: child.text}
+        if(child.text != '\n'):
+            for key in dict.keys():
+                if key in temp.keys():
+                    temp[key].append(dict[key])
+                else:							#if dict[key] != None:
+                    temp[key] = []
+                    temp[key].append(dict[key])
+    return temp
 
+def XMLParse(file):
+    tree = ET.parse(file)
+    root = tree.getroot()
+    dictXML = XMLRepeter(root)
+    tempDict= {}
+    tempDict['epochstage'] = []
+    tempDict['starttime'] = []
+    tempDict['duration'] = []
+
+    for key in dictXML.keys():
+        needToStrip = str(dictXML[key]).split(',')
+        for i in range(len(needToStrip)):
+            needToStrip[i] = needToStrip[i].lstrip(STRIP).rstrip(STRIP)
+        dictXML[key] = needToStrip
+
+	# Need to change this maybe	right now only includes the important stuff
+	# Need to fix the time
+	#get dictionary with sleepevent, start time, and duration
+	#need to expand so it will see every 30 sec and have it in epoch time
+    for i in range(len(dictXML['EventType'])):
+        if "Stages" in dictXML['EventType'][i]:
+            tempDict['epochstage'].append(dictXML['EventConcept'][i])
+            tempDict['duration'].append(float(dictXML['Duration'][i]))
+            tempDict['starttime'].append(float(dictXML['Start'][i]))
+    #print(tempDict['starttime'])
+    returnDict = {}
+    returnDict['epochstage'] = []
+    returnDict['starttime'] = []
+    returnDict['originalTime'] = StringTimetoEpoch(str(dictXML['ClockTime']).split(' ')[-1].lstrip(STRIP).rstrip(STRIP))
+	#need to standardize
+    for i in range(len(tempDict['epochstage'])):
+        j = 0.0
+        while j < (tempDict['duration'][i]):
+            returnDict['epochstage'].append(tempDict['epochstage'][i].split('|')[0] )
+            time = ( tempDict['starttime'][i] +  j )/ 60 + returnDict['originalTime']
+            if time > 1440:
+                time = time - 1440
+            returnDict['starttime'].append(time)
+            j = j + 30
+    returnDict['Type'] = 'XML'
+    #print (returnDict)
+    #exit()
+    return returnDict
 
 def getAllFilesInTree(dirPath):
     _files = []
@@ -153,7 +197,7 @@ def ScoringParseChoose(file):
     return found
 
 
-# Type 0		
+# Type 0
 def BasicScoreFile(file):
     JasonObj = {}
     JasonObj["epochstage"] = []
@@ -223,42 +267,30 @@ def FullScoreFile(file):
                     EventPos = i
     return JasonObj
 
-
 def GetSubIDandStudyID(filePath, CurrentDict):
+    #print(filePath)
+    #exit()
     holder = filePath.split('.')
     holder = holder[0].split('\\')
     # @bdyetton: When parsing strings, its better to look for an explit substring and not rely on things being in a certain index position in the string
     # I have used the (non default) parse module because regex is a pain.
     subjectid = holder[-1].split('subjectid')
     subjectid = subjectid[-1].split('_visit')
-    CurrentDict["subjectid"] = subjectid[0]	
-    if 'visit' in filePath: 
-        CurrentDict["visitid"] = subjectid[-1]
+    visitid = subjectid[-1]
+    subjectid = subjectid[0].split('-')
+    CurrentDict["subjectid"] = subjectid[0]
+    if 'visit' in filePath:
+        CurrentDict["visitid"] = visitid
     else:
         CurrentDict["visitid"] = 1
-    
-		
-#    if not "subjectid" in CurrentDict.keys():  # bdyetton: not sure why this is needed, so leaving it here.
-#        subjectid = parse('subjectid{}', filePath)
-#        print(filePath)
-#        print(subjectid)
-#        exit()
-#        if subjectid:
-#            CurrentDict["subjectid"] = subjectid[0]
-#        else:
-#            CurrentDict["subjectid"] = None
-#        visitid = parse('visitid{}', filePath)
-#        if visitid:
-#            CurrentDict["visitid"] = visitid[0]  # Do not add a visit number if there is not one.
 
     CurrentDict["studyid"] = holder[
         -3]  # This is not ideal, but i cannot see a simple way around it for now. Maybe i should add studyid to the files
-		
+
 #    print(CurrentDict['subjectid'])
 #    print(CurrentDict['studyid'])
 #    print(CurrentDict['visitid'])
     return CurrentDict
-
 
 # gets the file reads it using appropriate read method then calls appropriate parse function
 # does fine tuning for jason obj to uniform include subjectID and studyid
@@ -322,13 +354,15 @@ def MakeJsonObj(file):
         JSON = GetSubIDandStudyID(file, JSON)
         return JSON
 
-    # elif file.endswith('.xml'):
-    #		JSON = {}
-    #		JSON = XML_File(file)
-    #
-    #		#add studyid and subectID to JSON for scoring
-    #		JSON = GetSubIDandStudyID(file,JSON)
-    #		return JSON
+    elif file.endswith('.xml'):
+        JSON = {}
+        JSON = XMLParse(file)
+
+    	#add studyid and subectID to JSON for scoring
+        JSON = GetSubIDandStudyID(file,JSON)
+        #print(JSON['subjectid'])
+        #print(JSON['studyid'])
+        return JSON
 
     return 1
 
@@ -342,8 +376,7 @@ def CombineJson(Demo, Score):
         Found = False
         # this for loop goes through all the scoring datas
         for j in range(len(Score)):  # FIXME, what is j, what is it indexing over? be more specific
-        #    print(Score[j]['subjectid'])
-			# check if the studyid and subjectid of the data is the same
+            # check if the studyid and subjectid of the data is the same
             if Demo[i]["studyid"] == Score[j]["studyid"] and str(Demo[i]["subjectid"]) == str(Score[j]["subjectid"]):
                 temp = {**Demo[i], **Score[j]}  # FIXME temp what? be more specific
 
@@ -377,7 +410,7 @@ def CombineJson(Demo, Score):
 
                 ReturnJsonList.append(temp)
                 Found = True
-        #exit()
+
         if Found == False:
             print("no match found for: " + str(Demo[i]["studyid"]) + ", " + str(Demo[i]["subjectid"]))
 
@@ -387,7 +420,7 @@ def CombineJson(Demo, Score):
 # Parameter JsonList created from one demographics file of a particular study
 #          JsonList created from all score files for the same study
 #		   file  is the absolute path where new directory jsonObjects will be created which contain the data from score+demographic
-def save_json_file(JsonObjListDemo, JsonObjList, file):
+def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
     # call function to combine the lists into one json obj
     FinishedJson = CombineJson(JsonObjListDemo, JsonObjList)
 
@@ -409,6 +442,59 @@ def save_json_file(JsonObjListDemo, JsonObjList, file):
         json.dump(Object, jsonfile)
     return
 
+def studyFolders(dirPath):
+    _files = []
+    studyFolders = []
+    #In case we are looking at a file that isn't in /scorefiles/
+    studyFolderHead = -1
+    for folder, subfolders, files in os.walk(dirPath):
+        for _file in files:
+            filePath = os.path.join(os.path.abspath(folder), _file)
+            if(filePath.find('/') != -1):
+                holder = filePath.split('/')
+            else:
+                holder = filePath.split('\\')
+            #Get study folder lab name position
+            for i in range(len(holder)):
+                if((holder[i].find("scorefiles") != -1) or (holder[i].find("edf") != -1)):
+                    studyFolderHead = i
+                    break
+            if(studyFolderHead == -1):
+                break
+            location = ""
+            #Get the study folder lab name
+            for i in range(studyFolderHead):
+                if(i != 0):
+                    location = location + '\\' + holder[i]
+            #Append to list of study Folders
+            if(location not in studyFolders):
+                studyFolders.append(location)
+                break
+
+            studyFolderHead = -1
+
+    return studyFolders
+
+#Works with CAPStudy(kinda) and DinklemannLab
+def sleepStageMap(fileToMap,stageMap):
+    if not(stageMap.endswith(".xlsx")):
+        print("Sleep Stage Map is not an excel file")
+
+    df = pd.read_excel(stageMap)
+    mappedStages = []
+    keys = []
+    mapDictionary = {}
+
+    #Put keys and values into a dictionary
+#    for i, row in df.iterrows():
+#        #print(row['mapsfrom'], row['mapsto'])
+#        mapDictionary[row['mapsfrom']] = row['mapsto']
+#        keys.append(row['mapsfrom'])
+
+    
+    for i in range(fileToMap['epochstage']):
+        fileToMap['epochstage'][i] = stageMap[fileToMap['epochstage'][i]]
+    return mappedStages
 
 # Main
 # main chooses which parsing function is called
@@ -418,46 +504,60 @@ def save_json_file(JsonObjListDemo, JsonObjList, file):
 # 3) call main with no parameters and cmd line argument and manulally input when prompted
 if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there are some comments on tips and improvements (just for the bits i have looked at)
     if len(sys.argv) > 1:
-        path = sys.argv[1]  # FIXME using file and files as variable names is confusing, be more specific
+        file = sys.argv[1]  # FIXME using file and files as variable names is confusing, be more specific
     else:
-        path = input("Enter absolute path to the head Directory containing the scorings folders: ")
-
+        file = input("Enter absolute path to the head Directory containing the scorings folders: ")
     # filesInTemp = getAllFilesInTree(testdir)
     filelist = getAllFilesInTree(
-        path)  # FIXME in the future, stick with PEP8 standard, i.e. variable names should be variable_names not variableNames
+        file)  # FIXME in the future, stick with PEP8 standard, i.e. variable names should be variable_names not variableNames
 
     # now we have (need?) a list of Json Objs made from all files in folder
     # fist will contain all json obj from the score files
     # second will contain all json objs from demographic files
     JsonObjList = []
     JsonObjListDemo = []
-    FolerList = []
-    for file in filelist:  # FIXME files is a single element, and therefore it should be file (non pural)
-		#Get folder list here
-        FolderList = 
-		
-	for file in FolderList:	
-        temp = {}
-        #temp = GetSubIDandStudyID(file, temp)  # FIXME Do not use temp as a varible, there is always a more decriptive name
-        # Need to set studyid of current study
-        # if study id changes it means we are in different study folder
-        # so we can connect the Json objects and create the json files
-        # FIXME i dont think this is a very safe move, there may be .xlsx files that do not represent a new study
-        for Study in FolderList:
-            if ('scorefiles' in file) or not (('.txt' in file) or ('.edf' in file) or ('jsonObjects' in file)):
-                JsonObj = MakeJsonObj(file)
+    EpochStageMap = []
+    #print(file)
+    FolderList = studyFolders(file)
+    #print(FolderList)
+
+    for files in FolderList:# FIXME files is a single element, and therefore it should be file (non pural)
+        Study = getAllFilesInTree(files)
+        CheckEDFfolder = True
+        for Checking in Study:
+            if 'scorefile' in Checking:
+                CheckEDFfolder = False
+                break
+        for studyfile in Study:
+            #print(studyfile)
+
+	        #temp = GetSubIDandStudyID(files, temp)  # FIXME Do not use temp as a varible, there is always a more decriptive name
+            # Need to set studyid of current study
+            # if study id changes it means we are in different study folder
+            # so we can connect the Json objects and create the json files
+            # FIXME i dont think this is a very safe move, there may be .xlsx files that do not represent a new study
+
+            if ('scorefiles' in studyfile ) or ('edfs' in studyfile and CheckEDFfolder) or ('Demographics' in studyfile) or ('stagemap' in studyfile):
+                JsonObj = MakeJsonObj(studyfile)
+
                 if isinstance(JsonObj, int):
-                    print(file + " is not comprehendable")
-                elif isinstance(JsonObj, dict):
+                    print(studyfile + " is not comprehendable")
+                elif 'scorefile' in studyfile:
                     JsonObjList.append(JsonObj)
-                elif isinstance(JsonObj, list):
+                elif 'Demographics' in studyfile:
                     for i in JsonObj:
                         JsonObjListDemo.append(i)
-						
-		    save_json_file(JsonObjListDemo, JsonObjList, path)  # FIXME a more appropreate name would be save json file
-            #CurentStudy = temp['studyid']  # FIXME whats this for? I cant see it used anywhere
-            JsonObjListDemo = []
-            JsonObjList = []
-            gc.collect()
+                elif 'stagemap' in studyfile:
+                    for i in JsonObj:
+                        EpochStageMap.append(i)
+        #print(JsonObjList)
+        #print(JsonObjListDemo)
+        #exit()
 
-    save_json_file(JsonObjListDemo, JsonObjList, path)
+        CreateJsonFile(JsonObjListDemo, JsonObjList, file)  # FIXME a more appropreate name would be save json file
+        JsonObjListDemo = []
+        JsonObjList = []
+        gc.collect()
+
+
+    #CreateJsonFile(JsonObjListDemo, JsonObjList, file)
