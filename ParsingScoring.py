@@ -5,58 +5,113 @@ import json
 import os
 import sys
 import gc
+import re
 #from parse import parse as parse
 import xml.etree.ElementTree as ET
 
 subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid", "subID", "SUBID", "SubID",
                   "Subject ID", "subject id", "ID"]
-starttimespellings = ["starttime", "startime", "start time", "Start Time", "Start"]
+starttimespellings = ["starttime", "startime", "start time", "Start Time","PSG Start Time", "Start"]
 
 #characters that we will strip
 STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 
-def EDF_file_Hyp(path):
-    EDF_file = mne.io.read_raw_edf(path, stim_channel= 'auto', preload=True)
-    # splits the fileName into list of strings seperated by \
-    # [-1] takes the last string in the list which is the file name
-    NameOfFile = (path.split('\\')[-1])
+#CODE FROM MNE TO READ KEMP FILES
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def read_edf_annotations(fname):
+    """read_edf_annotations
+    Parameters:
+    -----------
+    fname : str
+        Path to file.
+    Returns:
+    --------
+    annot : DataFrame
+        The annotations
+    """
+    with open(fname, 'r', encoding='utf-8',
+              errors='ignore') as annotions_file:
+        tal_str = annotions_file.read()
 
+    exp = '(?P<onset>[+\-]\d+(?:\.\d*)?)' + \
+          '(?:\x15(?P<duration>\d+(?:\.\d*)?))?' + \
+          '(\x14(?P<description>[^\x00]*))?' + '(?:\x14\x00)'
+
+    annot = [m.groupdict() for m in re.finditer(exp, tal_str)]
+
+    good_annot = pd.DataFrame(annot)
+    good_annot = good_annot.query('description != ""').copy()
+    good_annot.loc[:, 'duration'] = good_annot['duration'].astype(float)
+    good_annot.loc[:, 'onset'] = good_annot['onset'].astype(float)
+    return good_annot
+
+
+def resample_30s(annot):
+    annot = annot.set_index('onset')
+    annot.index = pd.to_timedelta(annot.index, unit='s')
+    annot = annot.resample('30s').ffill()
+    annot = annot.reset_index()
+    annot['duration'] = 30.
+    return annot
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+def EDF_file_Hyp(path):
+    #using try and except right now because mne is broken on latest version and cannot read KEMP
+    #***once updated get rid of except portion
     jsonObj = {}
     jsonObj["epochstage"] = []
     jsonObj["epochstarttime"] = []
-    TimeAndStage = mne.io.get_edf_events(EDF_file)
-    StartTime = 0
-    for i in range(len(TimeAndStage) - 1):
-        # calculate time for start of next stage
-        EndTime = TimeAndStage[i + 1][0] - TimeAndStage[i][0]
-        # use given duration of current stage
-        Duration = TimeAndStage[i][1]
 
-        j = 0
-        while j < EndTime:
-            # append NaN to json objct as epoch stage if duration of a stage
-            # ends before the start of next stage
-            # ***We do this because some of the data may not correlate to eachother
-            if j <= Duration:
-                jsonObj["epochstage"].append(StartTime)
-            else:
-                jsonObj["epochstage"].append("NaN")
+    try:
+        EDF_file = mne.io.read_raw_edf(path, stim_channel= 'auto', preload=True)
+        TimeAndStage = mne.io.get_edf_events(EDF_file)
+        StartTime = 0
+        for i in range(len(TimeAndStage) - 1):
+            # calculate time for start of next stage
+            EndTime = TimeAndStage[i + 1][0] - TimeAndStage[i][0]
+            # use given duration of current stage
+            Duration = TimeAndStage[i][1]
 
-            jsonObj["epochstarttime"].append(TimeAndStage[i][2])
+            j = 0
+            while j < EndTime:
+                # append NaN to json objct as epoch stage if duration of a stage
+                # ends before the start of next stage
+                # ***We do this because some of the data may not correlate to eachother
+                if j <= Duration:
+                    jsonObj["epochstage"].append(StartTime)
+                else:
+                    jsonObj["epochstage"].append("NaN")
+
+                jsonObj["epochstarttime"].append(TimeAndStage[i][2])
+                StartTime = StartTime + .5
+                j = j + 30
+
+        lastInterval = TimeAndStage[-1][0] + TimeAndStage[-1][1]
+        StartTime = TimeAndStage[-1][0]
+        while StartTime < lastInterval:
+            jsonObj["epochstage"].append(StartTime)
+            jsonObj["epochstarttime"].append(TimeAndStage[-1][2])
             StartTime = StartTime + .5
-            j = j + 30
 
-    lastInterval = TimeAndStage[-1][0] + TimeAndStage[-1][1]
-    Time = TimeAndStage[-1][0]
-    while Time < lastInterval:
-        jsonObj["epochstage"].append(StartTime)
-        jsonObj["epochstarttime"].append(TimeAndStage[-1][2])
-        StartTime = StartTime + .5
+        # free memory
+        del EDF_file
+        del TimeAndStage
+        gc.collect()
 
-    # free memory
-    del EDF_file
-    del TimeAndStage
 
+    except:
+        annot = read_edf_annotations(path)
+        annot = resample_30s(annot)
+
+        mne_annot = mne.Annotations(annot.onset, annot.duration, annot.description)
+        #Need to pull out important information here
+        for i in range(len(mne_annot.description)):
+            jsonObj["epochstage"].append(mne_annot.description[i])
+            if i < 1:
+                jsonObj["epochstarttime"].append(float(mne_annot.duration[i])/60.0)
+            else:
+                jsonObj["epochstarttime"].append(float(mne_annot.duration[i])/60.0 + jsonObj["epochstarttime"][-1])
+        jsonObj['Type'] = '3'
     return jsonObj
 
 
@@ -107,7 +162,7 @@ def XMLParse(file):
             tempDict['epochstage'].append(dictXML['EventConcept'][i])
             tempDict['duration'].append(float(dictXML['Duration'][i]))
             tempDict['starttime'].append(float(dictXML['Start'][i]))
-    #print(tempDict['starttime'])
+
     returnDict = {}
     returnDict['epochstage'] = []
     returnDict['starttime'] = []
@@ -123,8 +178,7 @@ def XMLParse(file):
             returnDict['starttime'].append(time)
             j = j + 30
     returnDict['Type'] = 'XML'
-    #print (returnDict)
-    #exit()
+
     return returnDict
 
 def getAllFilesInTree(dirPath):
@@ -268,10 +322,9 @@ def FullScoreFile(file):
     return JasonObj
 
 def GetSubIDandStudyID(filePath, CurrentDict):
-    #print(filePath)
-    #exit()
+
     holder = filePath.split('.')
-    holder = holder[0].split('\\')
+    holder = holder[0].split('/')
     # @bdyetton: When parsing strings, its better to look for an explit substring and not rely on things being in a certain index position in the string
     # I have used the (non default) parse module because regex is a pain.
     subjectid = holder[-1].split('subjectid')
@@ -287,9 +340,7 @@ def GetSubIDandStudyID(filePath, CurrentDict):
     CurrentDict["studyid"] = holder[
         -3]  # This is not ideal, but i cannot see a simple way around it for now. Maybe i should add studyid to the files
 
-#    print(CurrentDict['subjectid'])
-#    print(CurrentDict['studyid'])
-#    print(CurrentDict['visitid'])
+
     return CurrentDict
 
 # gets the file reads it using appropriate read method then calls appropriate parse function
@@ -297,35 +348,63 @@ def GetSubIDandStudyID(filePath, CurrentDict):
 def MakeJsonObj(file):
     # demographic Files
     if file.endswith("xls") or file.endswith("xlsx") or file.endswith(".csv"):
-        # do the parsing
-        JsonList = ParsingPandas.main(file)
-        for i in range(len(JsonList)):
-            JsonList[i] = json.loads(JsonList[i])
         # add studyid from name of file
         temp = file.split('.')
         temp = temp[0].split('\\')
         temp = temp[-1].split('ics_')
         temp = temp[-1]
 
-        returningList = []
-        for i in range(len(JsonList)):
-            if "subjectid" not in JsonList[i]:
-                # checks for all the common different spellings of subjectid and casts it to subjectid in dict
-                for spell in subidspellings:
-                    if spell in JsonList[i]:
-                        JsonList[i]["subjectid"] = JsonList[i][spell]
-                # subjectid becomes N/A if comon spelling for subjectid not found
+#WIP
+        #Gives us the number of sheets in the excel file
+        xl = pd.ExcelFile(file)
+        numSheets = 0
+        for sheets in range(len(xl.sheet_names)):
+            numSheets += 1
+
+        if(numSheets == 1):
+            # do the parsing
+            JsonList = ParsingPandas.main(file)
+
+            for i in range(len(JsonList)):
+                JsonList[i] = json.loads(JsonList[i])
+
+            returningList = []
+            for i in range(len(JsonList)):
                 if "subjectid" not in JsonList[i]:
-                    JsonList[i]["subjectid"] = 'N/A'
+                    # checks for all the common different spellings of subjectid and casts it to subjectid in dict
+                    for spell in subidspellings:
+                        if spell in JsonList[i]:
+                            JsonList[i]["subjectid"] = JsonList[i][spell]
+                    # subjectid becomes N/A if comon spelling for subjectid not found
+                    if "subjectid" not in JsonList[i]:
+                        JsonList[i]["subjectid"] = 'N/A'
 
-                # if subject id is a word makes it into all lowercase
-                if isinstance(JsonList[i]["subjectid"], str):
-                    JsonList[i]["subjectid"] = JsonList[i]["subjectid"].lower()
+                    # if subject id is a word makes it into all lowercase
+                    if isinstance(JsonList[i]["subjectid"], str):
+                        JsonList[i]["subjectid"] = JsonList[i]["subjectid"].lower()
 
-            JsonList[i]["studyid"] = temp
-        # JsonList[i]["visitid"] = visit
+                JsonList[i]["studyid"] = temp
+            # JsonList[i]["visitid"] = visit
+            return JsonList
 
-        return JsonList
+        elif(numSheets==8):
+            JsonList = []
+            JsonList.append(temp)
+
+            temp1 = pd.read_excel(file, sheetname="list")
+            temp2 = pd.read_excel(file, sheetname="GraphData")
+
+            for i in temp1.iterrows():
+                if(i[1][1] == "RecordingStartTime"):
+                    JsonList.append(i[1][2])
+                    break
+
+            for i in temp2.iterrows():
+                JsonList.append(i[1][1])
+
+            return JsonList
+#WIP
+
 
     # these are the scoring files (txt)
     elif file.endswith(".txt"):
@@ -350,6 +429,8 @@ def MakeJsonObj(file):
         JSON = {}
         JSON = EDF_file_Hyp(file)
 
+
+
         # add studyid and subectID to JSON for scoring
         JSON = GetSubIDandStudyID(file, JSON)
         return JSON
@@ -360,8 +441,7 @@ def MakeJsonObj(file):
 
     	#add studyid and subectID to JSON for scoring
         JSON = GetSubIDandStudyID(file,JSON)
-        #print(JSON['subjectid'])
-        #print(JSON['studyid'])
+
         return JSON
 
     return 1
@@ -395,7 +475,7 @@ def CombineJson(Demo, Score):
                         temp["epochstarttime"].append(epochTime)
 
                 # type 1 files need to add the time sleeping to start time from demographics file data
-                elif temp["Type"] == '1':
+                elif temp["Type"] == '1' or temp["Type"] == '3':
                     StartTime = 0
 
                     for spell in starttimespellings:
@@ -465,7 +545,7 @@ def studyFolders(dirPath):
             #Get the study folder lab name
             for i in range(studyFolderHead):
                 if(i != 0):
-                    location = location + '\\' + holder[i]
+                    location = location + '/' + holder[i]
             #Append to list of study Folders
             if(location not in studyFolders):
                 studyFolders.append(location)
@@ -475,51 +555,23 @@ def studyFolders(dirPath):
 
     return studyFolders
 
-#FIX MAIN
-#Get rid of test comments and have ask for file head location again
 #Works with CAPStudy(kinda) and DinklemannLab
 def sleepStageMap(fileToMap,stageMap):
-    if not(stageMap.endswith(".xlsx")):
-        print("Sleep Stage Map is not an excel file")
-
-    df = pd.read_excel(stageMap)
-    mappedStages = []
-    keys = []
-    mapDictionary = {}
-
-    #Put keys and values into a dictionary
-    for i, row in df.iterrows():
-        #print(row['mapsfrom'], row['mapsto'])
-        mapDictionary[row['mapsfrom']] = row['mapsto']
-        keys.append(row['mapsfrom'])
-
-    #For CAPStudy
-    if(fileToMap.endswith(".txt")):
-        textFile  = open(fileToMap, 'r')
-        #This wait variable is for the CAPStudy
-        #so that we don't get the part where the file
-        #says what events are included
-        #wait = True
-
-        for line in textFile:
-            #if(line.find("Location") != -1):
-            #    wait = False
-            #    continue
-            #if(wait):
-            #    continue
-
-            for i in reversed(keys):
-                if(line.find(str(i)) != -1):
-                    mappedStages.append(mapDictionary[i])
+    #first for loop go loop around all dictionaries
+    for i in range(len(fileToMap)):
+        CurStageVar = fileToMap[i]['epochstage']
+        TempEpochStage = []
+        #loop around all items in epoch stage in this dictionary
+        for j in range(len(CurStageVar)):
+            #loop around all items in stagemap to see if there is a match
+            for k in range(len(stageMap)):
+                if str(stageMap[k]['mapsfrom']) == str(CurStageVar[j]):
+                    TempEpochStage.append(stageMap[k]['mapsto'])
                     break
 
-        textFile.close()
-        #print(mappedStages)
+        fileToMap[i]['epochstage'] = TempEpochStage
 
-    elif(fileToMap.endswith(".edf")):
-        EDF_file = mne.io.read_raw_edf(fileToMap)
-
-    return mappedStages
+    return fileToMap
 
 # Main
 # main chooses which parsing function is called
@@ -531,11 +583,7 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
     if len(sys.argv) > 1:
         file = sys.argv[1]  # FIXME using file and files as variable names is confusing, be more specific
     else:
-        #file = input("Enter absolute path to the head Directory containing the scorings folders: ")
-        file = "/home/jesse/Desktop/DinklemannLab"
-    # filesInTemp = getAllFilesInTree(testdir)
-    filelist = getAllFilesInTree(
-        file)  # FIXME in the future, stick with PEP8 standard, i.e. variable names should be variable_names not variableNames
+        file = input("Enter absolute path to the head Directory containing the scorings folders: ")
 
     # now we have (need?) a list of Json Objs made from all files in folder
     # fist will contain all json obj from the score files
@@ -543,24 +591,20 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
     JsonObjList = []
     JsonObjListDemo = []
     EpochStageMap = []
-    #print(file)
-    FolderList = studyFolders(file)
-    #print(FolderList)
 
-    #TEST
-    #testVar = sleepStageMap("/home/jesse/Desktop/StudiesToParse/CAPStudy/scorefiles/subjectid101.txt","/home/jesse/Desktop/StudiesToParse/CAPStudy/stagemap.xlsx")
-    testVar = sleepStageMap("/home/jesse/Desktop/StudiesToParse/DinklemannLab/DinklemannLab_Alice/scorefiles/subjectid5.txt","/home/jesse/Desktop/StudiesToParse/DinklemannLab/DinklemannLab_Alice/stagemap.xlsx")
-    #TEST
+    FolderList = studyFolders(file)
 
     for files in FolderList:# FIXME files is a single element, and therefore it should be file (non pural)
         Study = getAllFilesInTree(files)
         CheckEDFfolder = True
+
+        #make sure that we do not access edfs directory in study if there is a scorefiles directory
+        #by setting Check EDFfolder to false
         for Checking in Study:
             if 'scorefile' in Checking:
                 CheckEDFfolder = False
                 break
         for studyfile in Study:
-            #print(studyfile)
 
 	        #temp = GetSubIDandStudyID(files, temp)  # FIXME Do not use temp as a varible, there is always a more decriptive name
             # Need to set studyid of current study
@@ -570,7 +614,6 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
 
             if ('scorefiles' in studyfile ) or ('edfs' in studyfile and CheckEDFfolder) or ('Demographics' in studyfile) or ('stagemap' in studyfile):
                 JsonObj = MakeJsonObj(studyfile)
-
                 if isinstance(JsonObj, int):
                     print(studyfile + " is not comprehendable")
                 elif 'scorefile' in studyfile:
@@ -581,15 +624,15 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
                 elif 'stagemap' in studyfile:
                     for i in JsonObj:
                         EpochStageMap.append(i)
-        #print(JsonObjList)
-        #print(JsonObjListDemo)
-        #exit()
 
+        #exit()
+        JsonObjList = sleepStageMap(JsonObjList, EpochStageMap)
+        gc.collect()
         CreateJsonFile(JsonObjListDemo, JsonObjList, file)  # FIXME a more appropreate name would be save json file
         JsonObjListDemo = []
         JsonObjList = []
+        EpochStageMap = []
         gc.collect()
-        HitOnce = False
 
 
     #CreateJsonFile(JsonObjListDemo, JsonObjList, file)
