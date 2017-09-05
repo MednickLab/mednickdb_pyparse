@@ -6,6 +6,7 @@ import os
 import sys
 import gc
 import re
+import math
 #from parse import parse as parse
 import xml.etree.ElementTree as ET
 
@@ -359,6 +360,7 @@ def GetSubIDandStudyID(filePath, CurrentDict):
 
     holder = filePath.split('.')
     holder = holder[0].split('\\')
+    
     # @bdyetton: When parsing strings, its better to look for an explit substring and not rely on things being in a certain index position in the string
     # I have used the (non default) parse module because regex is a pain.
     subjectid = holder[-1].split('subjectid')
@@ -392,26 +394,61 @@ def MakeJsonObj(file):
         temp = temp[-1].split('ics_')
         temp = temp[-1]
 
-        returningList = []
-        for i in range(len(JsonList)):
-            if "subjectid" not in JsonList[i]:
-                # checks for all the common different spellings of subjectid and casts it to subjectid in dict
-                for spell in subidspellings:
-                    if spell in JsonList[i]:
-                        JsonList[i]["subjectid"] = JsonList[i][spell]
-                # subjectid becomes N/A if comon spelling for subjectid not found
+
+        #Gives us the number of sheets in the excel file
+        xl = pd.ExcelFile(file)
+        numSheets = 0
+        for sheets in range(len(xl.sheet_names)):
+            numSheets += 1
+
+        if(numSheets == 1):
+            # do the parsing
+            JsonList = ParsingPandas.main(file)
+
+            for i in range(len(JsonList)):
+                JsonList[i] = json.loads(JsonList[i])
+
+            returningList = []
+            for i in range(len(JsonList)):
                 if "subjectid" not in JsonList[i]:
-                    JsonList[i]["subjectid"] = 'N/A'
+                    # checks for all the common different spellings of subjectid and casts it to subjectid in dict
+                    for spell in subidspellings:
+                        if spell in JsonList[i]:
+                            JsonList[i]["subjectid"] = JsonList[i][spell]
+                    # subjectid becomes N/A if comon spelling for subjectid not found
+                    if "subjectid" not in JsonList[i]:
+                        JsonList[i]["subjectid"] = 'N/A'
 
-                # if subject id is a word makes it into all lowercase
-                if isinstance(JsonList[i]["subjectid"], str):
-                    JsonList[i]["subjectid"] = JsonList[i]["subjectid"].lower()
+                    # if subject id is a word makes it into all lowercase
+                    if isinstance(JsonList[i]["subjectid"], str):
+                        JsonList[i]["subjectid"] = JsonList[i]["subjectid"].lower()
 
-            JsonList[i]["studyid"] = temp
-        # JsonList[i]["visitid"] = visit
+                JsonList[i]["studyid"] = temp
+            # JsonList[i]["visitid"] = visit
+            return JsonList
 
-        return JsonList
+        elif(numSheets==8):
+            JsonDict = {}
+            JsonDict["studyid"] = temp
+            JsonDict["epochstarttime"] = []
+            JsonDict['epochstage'] = []
+            #JasonObj["Type"] = "2"
 
+            temp1 = pd.read_excel(file, sheetname="list")
+            temp2 = pd.read_excel(file, sheetname="GraphData")
+
+            for i in temp1.iterrows():
+                if(i[1][1] == "RecordingStartTime"):
+                    JsonDict["epochstarttime"].append(i[1][2])
+                    break
+
+            for i in temp2.iterrows():
+                if not(math.isnan(i[1][1])):
+                    JsonDict['epochstage'].append(int(i[1][1]))
+                else:
+                    JsonDict['epochstage'].append(-1)
+
+            return JsonDict
     # these are the scoring files (txt)
     elif file.endswith(".txt"):
         JSON = {}
@@ -435,8 +472,6 @@ def MakeJsonObj(file):
         JSON = {}
         JSON = EDF_file_Hyp(file)
         
-        
-        
         # add studyid and subectID to JSON for scoring
         JSON = GetSubIDandStudyID(file, JSON)
         return JSON
@@ -444,11 +479,6 @@ def MakeJsonObj(file):
     elif file.endswith('.xml'):
         JSON = {}
         JSON = XMLParse(file)
-        
-    	#add studyid and subectID to JSON for scoring
-        JSON = GetSubIDandStudyID(file,JSON)
-
-        return JSON
 
     return 1
 
@@ -587,6 +617,7 @@ def sleepStageMap(fileToMap,stageMap):
 
     return fileToMap
 
+
 # Main
 # main chooses which parsing function is called
 # Three methods of using the function
@@ -612,7 +643,7 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
     for files in FolderList:# FIXME files is a single element, and therefore it should be file (non pural)
         Study = getAllFilesInTree(files)
         CheckEDFfolder = True
-        
+
         #make sure that we do not access edfs directory in study if there is a scorefiles directory
         #by setting Check EDFfolder to false
         for Checking in Study:
@@ -627,10 +658,11 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
             # so we can connect the Json objects and create the json files
             # FIXME i dont think this is a very safe move, there may be .xlsx files that do not represent a new study
 
-            if ('scorefiles\\' in studyfile ) or ('edfs' in studyfile and CheckEDFfolder) or ('Demographics' in studyfile) or ('stagemap' in studyfile):
-                JsonObj = MakeJsonObj(studyfile)
 
+            if ('scorefiles' in studyfile ) or ('edfs' in studyfile and CheckEDFfolder) or ('Demographics' in studyfile) or ('stagemap' in studyfile):
+                JsonObj = MakeJsonObj(studyfile)
                 if isinstance(JsonObj, int):
+                    print(JsonObj)
                     print(studyfile + " is not comprehendable")
                 elif 'scorefile' in studyfile:
                     JsonObjList.append(JsonObj)
@@ -650,6 +682,5 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
         JsonObjList = []
         EpochStageMap = []
         gc.collect()
-
 
     #CreateJsonFile(JsonObjListDemo, JsonObjList, file)
