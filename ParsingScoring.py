@@ -18,7 +18,7 @@ STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 
 #CODE FROM MNE TO READ KEMP FILES
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def read_edf_annotations(fname):
+def read_edf_annotations(fname, annotation_format="edf/edf+"):
     """read_edf_annotations
 
     Parameters:
@@ -35,16 +35,25 @@ def read_edf_annotations(fname):
               errors='ignore') as annotions_file:
         tal_str = annotions_file.read()
 
-    exp = '(?P<onset>[+\-]\d+(?:\.\d*)?)' + \
-          '(?:\x15(?P<duration>\d+(?:\.\d*)?))?' + \
-          '(\x14(?P<description>[^\x00]*))?' + '(?:\x14\x00)'
+    if "edf" in annotation_format:
+        if annotation_format == "edf/edf+":
+            exp = '(?P<onset>[+\-]\d+(?:\.\d*)?)' + \
+                  '(?:\x15(?P<duration>\d+(?:\.\d*)?))?' + \
+                  '(\x14(?P<description>[^\x00]*))?' + '(?:\x14\x00)'
 
-    annot = [m.groupdict() for m in re.finditer(exp, tal_str)]
+        elif annotation_format == "edf++":
+            exp = '(?P<onset>[+\-]\d+.\d+)' + \
+                  '(?:(?:\x15(?P<duration>\d+.\d+)))' + \
+                  '(?:\x14\x00|\x14(?P<description>.*?)\x14\x00)'
 
-    good_annot = pd.DataFrame(annot)
-    good_annot = good_annot.query('description != ""').copy()
-    good_annot.loc[:, 'duration'] = good_annot['duration'].astype(float)
-    good_annot.loc[:, 'onset'] = good_annot['onset'].astype(float)
+        annot = [m.groupdict() for m in re.finditer(exp, tal_str)]
+        good_annot = pd.DataFrame(annot)
+        good_annot = good_annot.query('description != ""').copy()
+        good_annot.loc[:, 'duration'] = good_annot['duration'].astype(float)
+        good_annot.loc[:, 'onset'] = good_annot['onset'].astype(float)
+    else:
+        raise ValueError('Not supported')
+
     return good_annot
 
 
@@ -55,6 +64,7 @@ def resample_30s(annot):
     annot = annot.reset_index()
     annot['duration'] = 30.
     return annot
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 def EDF_file_Hyp(path):
@@ -102,22 +112,43 @@ def EDF_file_Hyp(path):
     
     
     except:
-        annot = read_edf_annotations(path)
-        annot = resample_30s(annot)
+    
+        annot = []
+        #need to do try and except because edf++ uses different reading style
+        try:
+            annot = read_edf_annotations(path)
+            annot = resample_30s(annot)
+
+            mne_annot = mne.Annotations(annot.onset, annot.duration, annot.description)
+            #Need to pull out important information here
+            for i in range(len(mne_annot.description)):
+                jsonObj["epochstage"].append(mne_annot.description[i])
+                if i < 1:
+                    jsonObj["epochstarttime"].append(float(mne_annot.duration[i])/60.0)
+                else:
+                    jsonObj["epochstarttime"].append(float(mne_annot.duration[i])/60.0 + jsonObj["epochstarttime"][-1])
+    
+        except:
+            annot = read_edf_annotations(path,annotation_format="edf++")
+            
+            
+            for lineIndex in range(len(annot.description)):
+                if 'stage' in annot.description[lineIndex]:
+                    stageRepeat = annot.duration[lineIndex]/60.0
+                    numRepeat = 0
+                    while numRepeat < stageRepeat:
+                        jsonObj['epochstage'].append(annot.description[lineIndex])
+                        if len(jsonObj['epochstarttime']) < 1:
+                            jsonObj['epochstarttime'].append(0)
+                        else:
+                            jsonObj['epochstarttime'].append(.5 + jsonObj['epochstarttime'][-1])
+                        numRepeat = numRepeat + .5               
+    
         
-        mne_annot = mne.Annotations(annot.onset, annot.duration, annot.description)
-        #Need to pull out important information here
-        for i in range(len(mne_annot.description)):
-            jsonObj["epochstage"].append(mne_annot.description[i])
-            if i < 1:
-                jsonObj["epochstarttime"].append(float(mne_annot.duration[i])/60.0)
-            else:
-                jsonObj["epochstarttime"].append(float(mne_annot.duration[i])/60.0 + jsonObj["epochstarttime"][-1])
         jsonObj['Type'] = '3'
     return jsonObj
 
 
-# WORKING ON IT
 def XMLRepeter (node):
     temp = {}
     list = []
@@ -167,7 +198,7 @@ def XMLParse(file):
 
     returnDict = {}
     returnDict['epochstage'] = []
-    returnDict['starttime'] = []
+    returnDict['epochstarttime'] = []
     returnDict['originalTime'] = StringTimetoEpoch(str(dictXML['ClockTime']).split(' ')[-1].lstrip(STRIP).rstrip(STRIP))
 	#need to standardize
     for i in range(len(tempDict['epochstage'])):
@@ -177,7 +208,8 @@ def XMLParse(file):
             time = ( tempDict['starttime'][i] +  j )/ 60 + returnDict['originalTime']
             if time > 1440:
                 time = time - 1440
-            returnDict['starttime'].append(time)
+            returnDict['epochstarttime'].append(time)
+                
             j = j + 30
     returnDict['Type'] = 'XML'
 
@@ -433,7 +465,6 @@ def CombineJson(Demo, Score):
             # check if the studyid and subjectid of the data is the same
             if Demo[i]["studyid"] == Score[j]["studyid"] and str(Demo[i]["subjectid"]) == str(Score[j]["subjectid"]):
                 temp = {**Demo[i], **Score[j]}  # FIXME temp what? be more specific
-
                 # type 0 files have epoch timestamps we add it now
                 if temp[
                     "Type"] == '0':  # FIXME if type is an int in char form, can you make it meaninginful, otherwise it should be type int
@@ -477,7 +508,7 @@ def CombineJson(Demo, Score):
 def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
     # call function to combine the lists into one json obj
     FinishedJson = CombineJson(JsonObjListDemo, JsonObjList)
-
+   
     # save each object(patient) as own file
     # create a folder in original file path
     # save all objects in folder as file
@@ -485,6 +516,10 @@ def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
     if not os.path.exists(directory):
         os.mkdir(directory)
     for Object in FinishedJson:
+        if len(Object['epochstage']) != len(Object['epochstarttime']):
+            print(Object['subectid'])
+            exit()
+            
         # study_subid_visit_session     <-- session not added yet
         if "session" in Object.keys():
             filename = directory + '/' + str(Object["studyid"]) + "_subjectid" + str(
@@ -493,7 +528,9 @@ def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
             filename = directory + '/' + str(Object["studyid"]) + "_subjectid" + str(
                 Object["subjectid"]) + "_visit" + str(Object["visitid"]) + ".json"
         jsonfile = open(filename, 'w')
-        json.dump(Object, jsonfile)
+        json.dump(Object, jsonfile)   
+        
+        
     return
 
 def studyFolders(dirPath):
@@ -537,12 +574,15 @@ def sleepStageMap(fileToMap,stageMap):
         TempEpochStage = []
         #loop around all items in epoch stage in this dictionary
         for j in range(len(CurStageVar)):
+            UnableToFindMapping = True
             #loop around all items in stagemap to see if there is a match
             for k in range(len(stageMap)):
                 if str(stageMap[k]['mapsfrom']) == str(CurStageVar[j]):
                     TempEpochStage.append(stageMap[k]['mapsto'])
+                    UnableToFindMapping = False
                     break
-        
+            if UnableToFindMapping:
+                TempEpochStage.append('N/A')
         fileToMap[i]['epochstage'] = TempEpochStage
 
     return fileToMap
@@ -601,9 +641,10 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
                     for i in JsonObj:
                         EpochStageMap.append(i)
 
-        #exit()
+        #exit()        
         JsonObjList = sleepStageMap(JsonObjList, EpochStageMap)
         gc.collect()
+        
         CreateJsonFile(JsonObjListDemo, JsonObjList, file)  # FIXME a more appropreate name would be save json file
         JsonObjListDemo = []
         JsonObjList = []
