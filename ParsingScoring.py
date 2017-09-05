@@ -355,7 +355,6 @@ def MakeJsonObj(file):
         temp = temp[-1].split('ics_')
         temp = temp[-1]
 
-#WIP
         #Gives us the number of sheets in the excel file
         xl = pd.ExcelFile(file)
         numSheets = 0
@@ -410,8 +409,6 @@ def MakeJsonObj(file):
                     JsonDict['epochstage'].append(-1)
 
             return JsonDict
-#WIP
-
 
     # these are the scoring files (txt)
     elif file.endswith(".txt"):
