@@ -6,6 +6,7 @@ import os
 import sys
 import gc
 import re
+import math
 #from parse import parse as parse
 import xml.etree.ElementTree as ET
 
@@ -388,21 +389,27 @@ def MakeJsonObj(file):
             return JsonList
 
         elif(numSheets==8):
-            JsonList = []
-            JsonList.append(temp)
+            JsonDict = {}
+            JsonDict["studyid"] = temp
+            JsonDict["epochstarttime"] = []
+            JsonDict['epochstage'] = []
+            #JasonObj["Type"] = "2"
 
             temp1 = pd.read_excel(file, sheetname="list")
             temp2 = pd.read_excel(file, sheetname="GraphData")
 
             for i in temp1.iterrows():
                 if(i[1][1] == "RecordingStartTime"):
-                    JsonList.append(i[1][2])
+                    JsonDict["epochstarttime"].append(i[1][2])
                     break
 
             for i in temp2.iterrows():
-                JsonList.append(i[1][1])
+                if not(math.isnan(i[1][1])):
+                    JsonDict['epochstage'].append(int(i[1][1]))
+                else:
+                    JsonDict['epochstage'].append(-1)
 
-            return JsonList
+            return JsonDict
 #WIP
 
 
@@ -555,7 +562,8 @@ def studyFolders(dirPath):
 
     return studyFolders
 
-#Works with CAPStudy(kinda) and DinklemannLab
+#If NOT in the stagemap, automatically put to -1
+#NaN converts to unknown
 def sleepStageMap(fileToMap,stageMap):
     #first for loop go loop around all dictionaries
     for i in range(len(fileToMap)):
