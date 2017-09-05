@@ -392,8 +392,7 @@ def MakeJsonObj(file):
             JsonDict["studyid"] = temp
             JsonDict["epochstarttime"] = []
             JsonDict['epochstage'] = []
-            #JasonObj["Type"] = "2"
-
+            
             temp1 = pd.read_excel(file, sheetname="list")
             temp2 = pd.read_excel(file, sheetname="GraphData")
 
