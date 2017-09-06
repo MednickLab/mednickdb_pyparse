@@ -7,11 +7,12 @@ import sys
 import gc
 import re
 import math
+import time
 #from parse import parse as parse
 import xml.etree.ElementTree as ET
 
 subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid", "subID", "SUBID", "SubID",
-                  "Subject ID", "subject id", "ID"]
+                  "Subject ID", "subject id", "ID", "SF_SubID"]
 starttimespellings = ["starttime", "startime", "start time", "Start Time","PSG Start Time", "Start"]
 
 #characters that we will strip
@@ -239,6 +240,9 @@ def Parsing(PandaFile):
 def StringTimetoEpoch(time):
     time = time.replace('.', ':')
     temp = time.split(":")
+    #did this b/c of empty time lines 
+    if temp[0] == '':
+        return 0
     hours = int(temp[0])
     if temp[-1].find("AM") != -1 and temp[0].find("12"):
         hours = 0
@@ -357,57 +361,59 @@ def FullScoreFile(file):
     return JasonObj
 
 def GetSubIDandStudyID(filePath, CurrentDict):
-
-    holder = filePath.split('.')
-    holder = holder[0].split('\\')
     
-    # @bdyetton: When parsing strings, its better to look for an explit substring and not rely on things being in a certain index position in the string
-    # I have used the (non default) parse module because regex is a pain.
-    subjectid = holder[-1].split('subjectid')
-    subjectid = subjectid[-1].split('_visit')
-    visitid = subjectid[-1]
-    subjectid = subjectid[0].split('-')
-    CurrentDict["subjectid"] = subjectid[0]
-    if 'visit' in filePath:
-        CurrentDict["visitid"] = visitid
-    else:
-        CurrentDict["visitid"] = 1
-
-    CurrentDict["studyid"] = holder[
-        -3]  # This is not ideal, but i cannot see a simple way around it for now. Maybe i should add studyid to the files
-
-
+    studyid = 'n/a'
+    subjectid = 'n/a'
+    visitid = 1
+    
+    if 'scorefiles' in filePath:
+        studyid = filePath.split('scorefiles')[0]
+        studyid = studyid.split('\\')
+        if studyid[-1] == '':
+            studyid = studyid[-2]
+        else:
+            studyid = studyid[-1]
+        subjectid =  filePath.split('scorefiles')[-1]
+        subjectid = subjectid.split('subjectid')[-1]       
+        subjectid = subjectid.split('.')[0]
+        if 'visit' in filePath:
+            visitid = subjectid.split('visit')[-1]
+            visitid = visitid,split('.')[0]
+            subjectid = subjecid.split('visit')[0]
+    
+    subjectid = str(subjectid).lstrip(STRIP).rstrip(STRIP)
+    visitid = str(visitid).lstrip(STRIP).rstrip(STRIP)
+    studyid = str(studyid).lstrip(STRIP).rstrip(STRIP)
+    CurrentDict['subjectid'] = subjectid
+    CurrentDict['studyid'] = studyid
+    CurrentDict['visitid'] = visitid
     return CurrentDict
+
+
 
 # gets the file reads it using appropriate read method then calls appropriate parse function
 # does fine tuning for jason obj to uniform include subjectID and studyid
 def MakeJsonObj(file):
     # demographic Files
     if file.endswith("xls") or file.endswith("xlsx") or file.endswith(".csv"):
-        # do the parsing
-        JsonList = ParsingPandas.main(file)
-        for i in range(len(JsonList)):
-            JsonList[i] = json.loads(JsonList[i])
         # add studyid from name of file
         temp = file.split('.')
         temp = temp[0].split('\\')
         temp = temp[-1].split('ics_')
         temp = temp[-1]
 
-
         #Gives us the number of sheets in the excel file
         xl = pd.ExcelFile(file)
         numSheets = 0
         for sheets in range(len(xl.sheet_names)):
             numSheets += 1
-
-        if(numSheets == 1):
+        
+        if(numSheets < 8):
             # do the parsing
             JsonList = ParsingPandas.main(file)
-
             for i in range(len(JsonList)):
                 JsonList[i] = json.loads(JsonList[i])
-
+            
             returningList = []
             for i in range(len(JsonList)):
                 if "subjectid" not in JsonList[i]:
@@ -425,29 +431,56 @@ def MakeJsonObj(file):
 
                 JsonList[i]["studyid"] = temp
             # JsonList[i]["visitid"] = visit
-            return JsonList
 
-        elif(numSheets==8):
+            return JsonList
+            
+        elif(numSheets>=8):
             JsonDict = {}
-            JsonDict["studyid"] = temp
+            JsonDict["subjectid"] = temp
             JsonDict["epochstarttime"] = []
             JsonDict['epochstage'] = []
-            #JasonObj["Type"] = "2"
-
+            
             temp1 = pd.read_excel(file, sheetname="list")
             temp2 = pd.read_excel(file, sheetname="GraphData")
-
+        
+            epoch = 0
+            time = ""
             for i in temp1.iterrows():
                 if(i[1][1] == "RecordingStartTime"):
-                    JsonDict["epochstarttime"].append(i[1][2])
+                    time = i[1][2]
                     break
+            
+            #TEST
+            JsonDict = GetSubIDandStudyID(file, JsonDict)
+            if(JsonDict['subjectid'] == "496"):
+                time = "13:44:52"
+            if(JsonDict['subjectid'] == "352"):
+                time = "13:44:52"
+            if(JsonDict['subjectid'] == "369"):
+                time = "13:44:52"
+            #TEST
+            epoch = StringTimetoEpoch(time)
+            if epoch == 0:
+                    print(file)
+                    
+            epoch = epoch - 0.5
 
             for i in temp2.iterrows():
                 if not(math.isnan(i[1][1])):
                     JsonDict['epochstage'].append(int(i[1][1]))
+                    epoch += 0.5
+                    if(epoch >= 1440):
+                        epoch = epoch - 1440
+                    JsonDict['epochstarttime'].append(epoch)
                 else:
                     JsonDict['epochstage'].append(-1)
-
+                    epoch += 0.5
+                    if(epoch >= 1440):
+                        epoch = epoch - 1440
+                    JsonDict['epochstarttime'].append(epoch)
+            JsonDict = GetSubIDandStudyID(file, JsonDict)  
+            JsonDict["Type"] = "Cellini"
+                        
             return JsonDict
     # these are the scoring files (txt)
     elif file.endswith(".txt"):
@@ -493,7 +526,7 @@ def CombineJson(Demo, Score):
         # this for loop goes through all the scoring datas
         for j in range(len(Score)):  # FIXME, what is j, what is it indexing over? be more specific
             # check if the studyid and subjectid of the data is the same
-            if Demo[i]["studyid"] == Score[j]["studyid"] and str(Demo[i]["subjectid"]) == str(Score[j]["subjectid"]):
+            if str(Demo[i]["studyid"]) == str(Score[j]["studyid"]) and str(Demo[i]["subjectid"]) == str(Score[j]["subjectid"]):
                 temp = {**Demo[i], **Score[j]}  # FIXME temp what? be more specific
                 # type 0 files have epoch timestamps we add it now
                 if temp[
@@ -547,7 +580,7 @@ def CreateJsonFile(JsonObjListDemo, JsonObjList, file):
         os.mkdir(directory)
     for Object in FinishedJson:
         if len(Object['epochstage']) != len(Object['epochstarttime']):
-            print(Object['subectid'])
+            print(Object['subjectid'])
             exit()
             
         # study_subid_visit_session     <-- session not added yet
@@ -612,7 +645,7 @@ def sleepStageMap(fileToMap,stageMap):
                     UnableToFindMapping = False
                     break
             if UnableToFindMapping:
-                TempEpochStage.append('N/A')
+                TempEpochStage.append(-1)
         fileToMap[i]['epochstage'] = TempEpochStage
 
     return fileToMap
@@ -639,7 +672,6 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
 
     FolderList = studyFolders(file)
 
-
     for files in FolderList:# FIXME files is a single element, and therefore it should be file (non pural)
         Study = getAllFilesInTree(files)
         CheckEDFfolder = True
@@ -658,11 +690,9 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
             # so we can connect the Json objects and create the json files
             # FIXME i dont think this is a very safe move, there may be .xlsx files that do not represent a new study
 
-
             if ('scorefiles' in studyfile ) or ('edfs' in studyfile and CheckEDFfolder) or ('Demographics' in studyfile) or ('stagemap' in studyfile):
                 JsonObj = MakeJsonObj(studyfile)
                 if isinstance(JsonObj, int):
-                    print(JsonObj)
                     print(studyfile + " is not comprehendable")
                 elif 'scorefile' in studyfile:
                     JsonObjList.append(JsonObj)
@@ -672,11 +702,28 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
                 elif 'stagemap' in studyfile:
                     for i in JsonObj:
                         EpochStageMap.append(i)
-
-        #exit()        
+        
         JsonObjList = sleepStageMap(JsonObjList, EpochStageMap)
         gc.collect()
-        
+        #print(type(JsonObjList[0]['subjectid']))
+        #print(type(JsonObjListDemo[-1]['subjectid']))
+        #if JsonObjList[0]['subjectid'] == str(JsonObjListDemo[-1]['subjectid']):
+        #    print('subjectid is same')
+        #else:
+        #    if int( JsonObjList[0]['subjectid']) == int(JsonObjListDemo[-1]['subjectid']):
+        #        print('int cast')
+        #    else:
+        #        print(JsonObjList[0]['subjectid'])
+        #        print(JsonObjListDemo[-1]['subjectid'])
+        #if JsonObjList[0]['studyid'] == JsonObjListDemo[-1]['studyid']:
+        #    print('studyid is same')
+        #else:
+        #    print('BROKEN')
+        #    print(JsonObjList[0]['studyid'])
+        #    print(JsonObjListDemo[-1]['studyid'])
+        #print(JsonObjList[0])
+        #print(JsonObjListDemo[-1])
+        #exit()
         CreateJsonFile(JsonObjListDemo, JsonObjList, file)  # FIXME a more appropreate name would be save json file
         JsonObjListDemo = []
         JsonObjList = []
