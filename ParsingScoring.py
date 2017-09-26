@@ -79,8 +79,10 @@ def EDF_file_Hyp(path):
     try:
         EDF_file = mne.io.read_raw_edf(path, stim_channel= 'auto', preload=True)
         TimeAndStage = mne.io.get_edf_events(EDF_file)           
-        StartTime = 0
+        StartTime = TimeAndStage[0][0]/30.0
+        
         for i in range(len(TimeAndStage) - 1):
+            
             # calculate time for start of next stage
             EndTime = TimeAndStage[i + 1][0] - TimeAndStage[i][0]
             # use given duration of current stage
@@ -92,21 +94,28 @@ def EDF_file_Hyp(path):
                 # ends before the start of next stage
                 # ***We do this because some of the data may not correlate to eachother
                 if j <= Duration:
-                    jsonObj["epochstage"].append(StartTime)
+                    jsonObj["epochstage"].append(TimeAndStage[i][2])
                 else:
                     jsonObj["epochstage"].append("NaN")
 
-                jsonObj["epochstarttime"].append(TimeAndStage[i][2])
+                jsonObj["epochstarttime"].append(StartTime)
                 StartTime = StartTime + .5
+                if StartTime >= 1440:
+                    StartTime = 0
                 j = j + 30
         
         lastInterval = TimeAndStage[-1][0] + TimeAndStage[-1][1]
-        StartTime = TimeAndStage[-1][0]
-        while StartTime < lastInterval:
-            jsonObj["epochstage"].append(StartTime)
-            jsonObj["epochstarttime"].append(TimeAndStage[-1][2])
+        j = TimeAndStage[-1][0]
+        
+        while j < lastInterval:
+            jsonObj["epochstage"].append(TimeAndStage[-1][2])
+            jsonObj["epochstarttime"].append(StartTime)
             StartTime = StartTime + .5
-
+            if StartTime >= 1440:
+                StartTime = 0
+            j = j + 30
+        jsonObj['Type'] = 'EDF With StartTime'
+        
         # free memory
         del EDF_file
         del TimeAndStage
@@ -114,7 +123,6 @@ def EDF_file_Hyp(path):
     
     
     except:
-    
         annot = []
         #need to do try and except because edf++ uses different reading style
         try:
@@ -148,6 +156,7 @@ def EDF_file_Hyp(path):
     
         
         jsonObj['Type'] = '3'
+           
     return jsonObj
 
 
@@ -174,6 +183,7 @@ def XMLRepeter (node):
     return temp
 
 def XMLParse(file):
+    #print('in xmlParse')
     tree = ET.parse(file)
     root = tree.getroot()
     dictXML = XMLRepeter(root)
@@ -210,11 +220,12 @@ def XMLParse(file):
             time = ( tempDict['starttime'][i] +  j )/ 60 + returnDict['originalTime']
             if time > 1440:
                 time = time - 1440
-            returnDict['epochstarttime'].append(time)
+            returnDict['epochstarttime'].append(round(time,3))
                 
             j = j + 30
     returnDict['Type'] = 'XML'
-
+    #print(returnDict)
+    #exit()
     return returnDict
 
 def getAllFilesInTree(dirPath):
@@ -238,12 +249,19 @@ def Parsing(PandaFile):
 
 
 def StringTimetoEpoch(time):
-    time = time.replace('.', ':')
+    #print(time)
+    time = str(time).replace('.', ':')
+    
     temp = time.split(":")
     #did this b/c of empty time lines 
     if temp[0] == '':
+        print(time)
+        print ('above')
+        exit()
         return 0
+    
     hours = int(temp[0])
+
     if temp[-1].find("AM") != -1 and temp[0].find("12"):
         hours = 0
     elif temp[-1].find("PM") != -1:
@@ -364,7 +382,7 @@ def GetSubIDandStudyID(filePath, CurrentDict):
     
     studyid = 'n/a'
     subjectid = 'n/a'
-    visitid = 1
+    visitid = '1'
     
     if 'scorefiles' in filePath:
         studyid = filePath.split('scorefiles')[0]
@@ -377,12 +395,14 @@ def GetSubIDandStudyID(filePath, CurrentDict):
         subjectid = subjectid.split('subjectid')[-1]       
         subjectid = subjectid.split('.')[0]
         if 'visit' in filePath:
-            visitid = subjectid.split('visit')[-1]
-            visitid = visitid,split('.')[0]
-            subjectid = subjecid.split('visit')[0]
+            visitid = subjectid.split('visitid')[-1]
+            visitid = visitid.split('.')[0]
+            subjectid = subjectid.split('visitid')[0]
     
     subjectid = str(subjectid).lstrip(STRIP).rstrip(STRIP)
+    subjectid = str(subjectid).lstrip('_').rstrip('_')
     visitid = str(visitid).lstrip(STRIP).rstrip(STRIP)
+    visitid = str(visitid).lstrip('_').rstrip('_')
     studyid = str(studyid).lstrip(STRIP).rstrip(STRIP)
     CurrentDict['subjectid'] = subjectid
     CurrentDict['studyid'] = studyid
@@ -401,7 +421,6 @@ def MakeJsonObj(file):
         temp = temp[0].split('\\')
         temp = temp[-1].split('ics_')
         temp = temp[-1]
-
         #Gives us the number of sheets in the excel file
         xl = pd.ExcelFile(file)
         numSheets = 0
@@ -460,6 +479,7 @@ def MakeJsonObj(file):
                 time = "13:44:52"
             #TEST
             epoch = StringTimetoEpoch(time)
+            
             if epoch == 0:
                     print(file)
                     
@@ -512,6 +532,9 @@ def MakeJsonObj(file):
     elif file.endswith('.xml'):
         JSON = {}
         JSON = XMLParse(file)
+        if 'studyid' not in JSON.keys():
+            JSON = GetSubIDandStudyID(file,JSON)
+        return JSON
 
     return 1
 
@@ -540,7 +563,7 @@ def CombineJson(Demo, Score):
                         epochTime = temp["epochstarttime"][samples] + .5
                         if epochTime >= 1440:
                             epochTime = 0
-                        temp["epochstarttime"].append(epochTime)
+                        temp["epochstarttime"].append(round(epochTime,3))
 
                 # type 1 files need to add the time sleeping to start time from demographics file data
                 elif temp["Type"] == '1' or temp["Type"] == '3':
@@ -548,13 +571,17 @@ def CombineJson(Demo, Score):
 
                     for spell in starttimespellings:
                         if spell in temp.keys():
-                            StartTime = StringTimetoEpoch(temp[spell])
+                            try:
+                                StartTime = StringTimetoEpoch(temp[spell])
+                            except:
+                                temp[spell]= '16:00:00'
+                                StartTime = StringTimetoEpoch(temp[spell])
 
                     for index in range(len(temp["epochstarttime"])):
                         CheckOver = temp["epochstarttime"][index] + StartTime
                         if CheckOver >= 1440:
                             CheckOver = CheckOver - 1440
-                        temp["epochstarttime"][index] = CheckOver
+                        temp["epochstarttime"][index] = round(CheckOver,3)
 
                 ReturnJsonList.append(temp)
                 Found = True
@@ -666,6 +693,7 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
     # now we have (need?) a list of Json Objs made from all files in folder
     # fist will contain all json obj from the score files
     # second will contain all json objs from demographic files
+    
     JsonObjList = []
     JsonObjListDemo = []
     EpochStageMap = []
@@ -707,15 +735,16 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
         gc.collect()
         #print(type(JsonObjList[0]['subjectid']))
         #print(type(JsonObjListDemo[-1]['subjectid']))
+        #exit()
         #if JsonObjList[0]['subjectid'] == str(JsonObjListDemo[-1]['subjectid']):
         #    print('subjectid is same')
         #else:
-        #    if int( JsonObjList[0]['subjectid']) == int(JsonObjListDemo[-1]['subjectid']):
+        #    if str( JsonObjList[0]['subjectid']) == str(JsonObjListDemo[-1]['subjectid']):
         #        print('int cast')
         #    else:
         #        print(JsonObjList[0]['subjectid'])
         #        print(JsonObjListDemo[-1]['subjectid'])
-        #if JsonObjList[0]['studyid'] == JsonObjListDemo[-1]['studyid']:
+        #if str(JsonObjList[0]['studyid']) == str(JsonObjListDemo[-1]['studyid']):
         #    print('studyid is same')
         #else:
         #    print('BROKEN')
