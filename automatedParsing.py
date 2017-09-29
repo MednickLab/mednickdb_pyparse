@@ -1,7 +1,9 @@
 import mne
+import sys
 import pandas as pd
 import numpy
 import ParsingScoring as ps
+import ParsingEDF as pe
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Title: read_edf_annotations, resample_30s
@@ -67,26 +69,30 @@ def resample_30s(annot):
 #- actigraphy (same as above)
 
 def sleep_parsing ( file ):
-    jsonobj = []
-    try:
-        edffile = mne.io.read_raw_edf(file, stim_channel= 'auto', preload=True)
-        annot = mne.io.get_edf_events(edffile)           
-        return annot   
-    
-    except:
-    
-        annot = []
-        #need to do try and except because edf++ uses different reading style
-        try:
-            annot = read_edf_annotations(file)
-            annot = resample_30s(annot)
+    jsonobj = pe.EdfParse(file)
+    return jsonobj
 
-            mneannot = mne.Annotations(annot.onset, annot.duration, annot.description)
-            #Need to pull out important information here
-            return mneannot
-        except:
-            annot = read_edf_annotations(file,annotation_format="edf++")
-            return annot
+#   written for edf+ and edf ++ if needed    
+#    jsonobj = []
+#    try:
+#        edffile = mne.io.read_raw_edf(file, stim_channel= 'auto', preload=True)
+#        annot = mne.io.get_edf_events(edffile)           
+#        return annot   
+#    
+#    except:
+#    
+#        annot = []
+        #need to do try and except because edf++ uses different reading style
+#        try:
+#            annot = read_edf_annotations(file)
+#            annot = resample_30s(annot)
+
+#            mneannot = mne.Annotations(annot.onset, annot.duration, annot.description)
+#            #Need to pull out important information here
+#            return mneannot
+#        except:
+#            annot = read_edf_annotations(file,annotation_format="edf++")
+#            return annot
     
 def scoringfile_parsing ( file ) :
     jsondict = ps.MakeJsonObj(file)
@@ -94,8 +100,7 @@ def scoringfile_parsing ( file ) :
 
 def tabulardata_parsing ( file ):
     # works if only one page for tabular data
-    jsondict = ps.MakeJsonObj(file)
-    
+    jsondict = ps.MakeJsonObj(file)    
     return dict
 
 #def sleepdiaries_parsing ( file ):
@@ -112,14 +117,20 @@ if __name__ == '__main__':
     else:
         filepath = input("Enter absolute path to the head Directory containing the scorings folders: ")
     
+    jsonobj = []
+    
     #choose correct file type
-    if sleep == filepath:
-      #call sleep parse function
-    elif scoringfile == filepath:
-      #call scoring file parse function
-    elif tabulardata = filepath: 
-      #call tabulardata file parse function
-    elif sleepdiaries = filepath:
+    if 'scorefiles' not in filepath and '.edf' in filepath:
+        #call sleep parse function
+        jsonobj = sleep_parsing(filepath)
+    elif 'scorefiles' in filepath:
+        #call scoring file parse function
+        jsonobj = scoringfile_parsing(filepath)
+    elif 'xlsx' in filepath: 
+        #call tabulardata file parse function
+        jsonobj = tabulardata_parsing(filepath)
+#    elif sleepdiaries = filepath:
       #call sleepdiaries parse function
-    elif actigraphy = filepath:
+#    elif actigraphy = filepath:
       #call actigraphy parse function
+    print (jsonobj)
