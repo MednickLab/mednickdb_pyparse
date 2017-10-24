@@ -72,45 +72,58 @@ def sleep_parsing ( file ):
     jsonobj = pe.EdfParse(file)
     return jsonobj
 
-#   written for edf+ and edf ++ if needed    
-#    jsonobj = []
-#    try:
-#        edffile = mne.io.read_raw_edf(file, stim_channel= 'auto', preload=True)
-#        annot = mne.io.get_edf_events(edffile)           
-#        return annot   
-#    
-#    except:
-#    
-#        annot = []
-        #need to do try and except because edf++ uses different reading style
-#        try:
-#            annot = read_edf_annotations(file)
-#            annot = resample_30s(annot)
 
-#            mneannot = mne.Annotations(annot.onset, annot.duration, annot.description)
-#            #Need to pull out important information here
-#            return mneannot
-#        except:
-#            annot = read_edf_annotations(file,annotation_format="edf++")
-#            return annot
-    
+
 def scoringfile_parsing ( file ) :
-    jsondict = ps.MakeJsonObj(file)
+    jsondict = ps.MakeJsonObj(file)                  
     return jsondict
 
+#How is location of stagemap folder passed in?    
+def stagemapping (jsondict):
+    # Here we find the correct stage map and do mapping
+    if 'studyid' in jsondict.keys:
+        study = jsondict['studyid']
+        #need to figure out how to know hwere stage map located
+        stagemapfiles = ps.getAllFilesInTree(_LOCATIONofSTAGEMAP_)
+        found = False
+        smlocation = ''
+        while !found or study == '':
+            for i in Range(stagemapfiles):
+                if (study + '_') in stagemapfiles[i]:
+                    found = True
+                    smlocation = stagemapfiles[i]
+            if found == False:
+                study = study[:-1]
+        if smlocation == '':
+            print ('Unable to find stagemapfiles for study')
+        else:
+            stagemap = ps.MakeJsonObj(smlocation)
+            jsondict = ps.sleepStageMap(jsondict, stagemap)
+    return jsondict
+    
 def tabulardata_parsing ( file ):
     # works if only one page for tabular data
     jsondict = ps.MakeJsonObj(file)    
     return dict
 
 #def sleepdiaries_parsing ( file ):
+#CSV files
 #def actigraphy_parsing (file):
-    
+    #go line by line until find "- Statistics -"
+    #Create it as datatable
+    #- remove any lines starting with a blank
+    #- remove any lines that are "summary"
+    #- remove any lines that are "excluded"
+    # GO until you find line start with '-----'
 
+    #go line by line down until find '- Epoch-by-Epoch Data -' go down to line 187 which contains keys
+    #map key to the other actigraphy mapping files
+    #create datatable until EOF
 
 #main function takes in a path to file
 #return as json string
-if __name__ == '__main__': 
+#if __name__ == '__main__': 
+def main(filetype, filepath, subject, visit= None, session = None, task = None) :
     filepath = ''
     if len(sys.argv) > 1:
         filepath = sys.argv[1]  # FIXME using file and files as variable names is confusing, be more specific
@@ -133,4 +146,28 @@ if __name__ == '__main__':
       #call sleepdiaries parse function
 #    elif actigraphy = filepath:
       #call actigraphy parse function
-    print (jsonobj)
+    
+    if type(jsonobj) is dict:
+        jsonobj['subject'] = subject
+        if visit != None:
+            jsondict['visit'] = visit
+        if session != None:
+            jsondict['session'] = session
+        if task != None:
+            jsondict['task'] = task
+        jsondict = stagemapping(jsondict)
+    #Is there stages to map for these files (none scorefiles) ??? (I dont think so)
+    elif type (jsonobj) is list:
+        for index in range(jsonobj):
+            jsonobj[index]['subject'] = subject
+            if visit != None:
+                jsondict[index]['visit'] = visit
+            if session != None:
+                jsondict[index]['session'] = session
+            if task != None:
+                jsondict[index]['task'] = task
+    
+    jsonlist = json.dumps(jsonobj)      
+   
+    print (jsonobj)      #delete this line.
+    return jsonlist
