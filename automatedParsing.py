@@ -4,7 +4,7 @@ import pandas as pd
 import numpy
 import ParsingScoring as ps
 import ParsingEDF as pe
-
+import json
 #global variable
 SLEEPMAP = ""
 
@@ -28,11 +28,11 @@ def sleep_parsing ( file ):
 
 
 def scoringfile_parsing ( file ) :
-    #try:
-    print(file)
-    jsondict = ps.MakeJsonObj(file) 
-    #except:
-    return  None, 1, "Failed to parse scorefile"
+    try:
+        print(file)
+        jsondict = ps.MakeJsonObj(file) 
+    except:
+        return  None, 1, "Failed to parse scorefile"
     #line for change stages to stagemap stages
     #jsondict = stagemapping(jsondict)
     return jsondict, 0, ''
@@ -143,12 +143,13 @@ def automated_parsing (filepath, filetype, subject = None, visit= None, session 
         jsonlist = []
         for index in range(len(jsonobj)):
             jsonlist.append(json.dumps(jsonobj[index]))
-    else:
+    elif type (jsonobj) is dict:
         jsonlist = json.dumps(jsonobj)
-   
+    else :
+        return jsonobj, error, msg
     print (jsonobj)      #delete this line.
     return jsonlist, error, msg
 
 #for testing
-object, error, message = automated_parsing("D:/Users/Se Hoon Bang/Desktop/InternWork/DataFiles/subjectid10.edf", 'scorefiles')
+object, error, message = automated_parsing("E:/BensGoogleDrive/SleepArchData/StudiesToParse/WamsleyLab/WamsleyLab_R21/scorefiles/subjectid01.edf", 'scorefiles')
 print (message)
