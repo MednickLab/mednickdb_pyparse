@@ -9,17 +9,18 @@ def Parsing(PandaFile):
     hit = []
 
     count = PandaFile.shape
-    for _key in FileKeys:
-        if _key == "SubID":
-            hit.append("SubID")
-        elif _key == "Study":
-            hit.append("Study")
-        elif _key == "Visit":
-            hit.append("Visit")
-        elif _key == "Session":
-            hit.append("Session")
-        elif _key == "Task":
-            hit.append("Task")
+    #TODO this does nothing right now, modify so that misspelling get corrected and things like subID -> subjectid
+#     for _key in FileKeys:
+#         if _key == "SubID": 
+#             hit.append("SubID")
+#         elif _key == "Study":
+#             hit.append("Study")
+#         elif _key == "Visit":
+#             hit.append("Visit")
+#         elif _key == "Session":
+#             hit.append("Session")
+#         elif _key == "Task":
+#             hit.append("Task")
 
     output_dict = []
     for sub_data in PandaFile.iterrows():
