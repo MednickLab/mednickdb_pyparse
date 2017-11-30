@@ -10,7 +10,7 @@ def EdfParse(path = None):
       EDF_file = mne.io.read_raw_edf(sys.argv[1])
       path = sys.argv[1]
    else: 
-      EDF_file = mne.io.read_raw_edf(path, preload=True)
+      EDF_file = mne.io.read_raw_edf(path, preload=True) #FIXME: Preload is only nessary for edf+, so try catch this
    #splits the fileName into list of strings seperated by \
    #[-1] takes the last string in the list which is the file name
    NameOfFile = (path.split('\\')[-1])
@@ -36,9 +36,9 @@ def EdfParse(path = None):
    edfDictionary['file_name'] = NameOfFile 
 
    #the jason dictionary of meta data of edf file
-   edfDictionaryToJSON = json.dumps(edfDictionary)
+   edfDictionaryToJSON = json.dumps(edfDictionary) #append edf_ to all variables here or in auto_parsing
    print(NameOfFile)
-   return print("Done")
+   return print("Done") #FIXME
  
 def main (File_to_Parse = None):
    EdfParse(File_to_Parse)
