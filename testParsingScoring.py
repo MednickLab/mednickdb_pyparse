@@ -1,3 +1,5 @@
+#TODO this file can be deleteed because i think its unused. bdyetton
+
 import pandas as pd
 import mne
 import ParsingPandas
