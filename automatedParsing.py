@@ -114,7 +114,7 @@ def automated_parsing (filepath, filetype, subject = None, visit= None, session 
       #call actigraphy parse function
     
     #check if error occured
-    if error == 1:
+    if error == 1: #FIXME
         return jsonobj, error , msg
     
     
@@ -130,7 +130,7 @@ def automated_parsing (filepath, filetype, subject = None, visit= None, session 
     #Is there stages to map for these files (none scorefiles) ??? (I dont think so)
     elif type (jsonobj) is list:
         for index in range(jsonobj):
-            jsonobj[index]['subject'] = subject
+            jsonobj[index]['subject'] = subject #FIXME
             if visit != None:
                 jsonobj[index]['visit'] = visit
             if session != None:
@@ -142,7 +142,7 @@ def automated_parsing (filepath, filetype, subject = None, visit= None, session 
     if type (jsonobj) is list:
         jsonlist = []
         for index in range(len(jsonobj)):
-            jsonlist.append(json.dumps(jsonobj[index]))
+            jsonlist.append(json.dumps(jsonobj[index])) #FIXME
     elif type (jsonobj) is dict:
         jsonlist = json.dumps(jsonobj)
     else :
