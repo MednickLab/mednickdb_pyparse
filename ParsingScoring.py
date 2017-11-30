@@ -309,7 +309,7 @@ def ScoringParseChoose(file):
 
 
 # Type 0
-def BasicScoreFile(file):
+def BasicScoreFile(file): #This needs a starttime so it needs demographics
     JasonObj = {}
     JasonObj["epochstage"] = []
     JasonObj["Type"] = "0"
@@ -324,7 +324,7 @@ def BasicScoreFile(file):
 # Type 1		Example: SpencerLab
 # these files give time in seconds in 30 sec interval
 # start of sleep time is given in demographic file
-def LatTypeScoreFile(file):
+def LatTypeScoreFile(file): #Needs a starttime??
     JasonObj = {}
     JasonObj["Type"] = "1"
     JasonObj["epochstage"] = []
@@ -343,7 +343,7 @@ def LatTypeScoreFile(file):
     return JasonObj
 
 
-# Type 2
+# Type 2 Example: CAPStudy, maybe other psyionet stuff...
 def FullScoreFile(file):
     JasonObj = {}
     JasonObj["Type"] = "2"
@@ -427,7 +427,7 @@ def MakeJsonObj(file):
         for sheets in range(len(xl.sheet_names)):
             numSheets += 1
         
-        if(numSheets < 8):
+        if(numSheets < 8): #FIXME this was the conditional to check if the xlsx file was a scorefile or a demographics file
             # do the parsing
             JsonList = ParsingPandas.main(file)
             for i in range(len(JsonList)):
@@ -453,7 +453,7 @@ def MakeJsonObj(file):
 
             return JsonList
             
-        elif(numSheets>=8):
+        elif(numSheets>=8): #Then we have a scorefile
             JsonDict = {}
             JsonDict["subjectid"] = temp
             JsonDict["epochstarttime"] = []
@@ -469,21 +469,21 @@ def MakeJsonObj(file):
                     time = i[1][2]
                     break
             
-            #TEST
-            JsonDict = GetSubIDandStudyID(file, JsonDict)
-            if(JsonDict['subjectid'] == "496"):
-                time = "13:44:52"
-            if(JsonDict['subjectid'] == "352"):
-                time = "13:44:52"
-            if(JsonDict['subjectid'] == "369"):
-                time = "13:44:52"
-            #TEST
+#             #TEST
+#             JsonDict = GetSubIDandStudyID(file, JsonDict)
+#             if(JsonDict['subjectid'] == "496"):
+#                 time = "13:44:52"
+#             if(JsonDict['subjectid'] == "352"):
+#                 time = "13:44:52"
+#             if(JsonDict['subjectid'] == "369"):
+#                 time = "13:44:52"
+#             #TEST
             epoch = StringTimetoEpoch(time)
             
             if epoch == 0:
                     print(file)
                     
-            epoch = epoch - 0.5
+            epoch = epoch - 0.5 #Consider changing to datetime objects
 
             for i in temp2.iterrows():
                 if not(math.isnan(i[1][1])):
@@ -499,14 +499,14 @@ def MakeJsonObj(file):
                         epoch = epoch - 1440
                     JsonDict['epochstarttime'].append(epoch)
             JsonDict = GetSubIDandStudyID(file, JsonDict)  
-            JsonDict["Type"] = "Cellini"
+            JsonDict["Type"] = "Cellini" #Because this was the only type at the time. FIXME, remove
                         
             return JsonDict
     # these are the scoring files (txt)
     elif file.endswith(".txt"):
         JSON = {}
         temp = open(file, 'r')
-        ScoreFileType = ScoringParseChoose(temp)
+        ScoreFileType = ScoringParseChoose(temp) #This determines which type of txt file is present
         if ScoreFileType == 0:
             JSON = BasicScoreFile(temp)
         elif ScoreFileType == 1:
@@ -514,22 +514,22 @@ def MakeJsonObj(file):
         elif ScoreFileType == 2:
             JSON = FullScoreFile(temp)
         else:
-            print("other")
+            print("other") #FIXME throw error
 
         # add studyid and subectID to JSON for scoring
-        JSON = GetSubIDandStudyID(file, JSON)
+        JSON = GetSubIDandStudyID(file, JSON) #Get subeject id and study id from filename and append to JSON
         return JSON
 
     # EDF+ files which contain scoring data
     elif file.endswith(".edf"):
         JSON = {}
-        JSON = EDF_file_Hyp(file)
+        JSON = EDF_file_Hyp(file) #Deal with edf+ files
         
         # add studyid and subectID to JSON for scoring
         JSON = GetSubIDandStudyID(file, JSON)
         return JSON
 
-    elif file.endswith('.xml'):
+    elif file.endswith('.xml'): #Some score file were xml...
         JSON = {}
         JSON = XMLParse(file)
         if 'studyid' not in JSON.keys():
@@ -541,7 +541,7 @@ def MakeJsonObj(file):
 
 # Demo is a list of dictionary from demographic files
 # Score is  list of dictionary from all score files
-def CombineJson(Demo, Score):
+def CombineJson(Demo, Score): #Combines demo with scoprefile
     ReturnJsonList = []
     # this for loop goes through all the demographics data
     for i in range(len(Demo)):  # FIXME, what is i, what is it indexing over? be more specific
@@ -698,16 +698,16 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
     JsonObjListDemo = []
     EpochStageMap = []
 
-    FolderList = studyFolders(file)
+    FolderList = studyFolders(file) #becuase all of the files requested to be parsed may be too much for memory, divide into "study folder" chunks
 
     for files in FolderList:# FIXME files is a single element, and therefore it should be file (non pural)
-        Study = getAllFilesInTree(files)
+        Study = getAllFilesInTree(files) #Get ALL files in study folder
         CheckEDFfolder = True
 
         #make sure that we do not access edfs directory in study if there is a scorefiles directory
         #by setting Check EDFfolder to false
-        for Checking in Study:
-            if 'scorefile' in Checking:
+        for Checking in Study: #Checking is a single file in a study
+            if 'scorefile' in Checking: #If there is a scorefiles folder then we can ignore the edf folder
                 CheckEDFfolder = False
                 break
         for studyfile in Study:
@@ -718,6 +718,7 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
             # so we can connect the Json objects and create the json files
             # FIXME i dont think this is a very safe move, there may be .xlsx files that do not represent a new study
 
+		#Check if the file we have is of interest
             if ('scorefiles' in studyfile ) or ('edfs' in studyfile and CheckEDFfolder) or ('Demographics' in studyfile) or ('stagemap' in studyfile):
                 JsonObj = MakeJsonObj(studyfile)
                 if isinstance(JsonObj, int):
@@ -730,9 +731,12 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
                 elif 'stagemap' in studyfile:
                     for i in JsonObj:
                         EpochStageMap.append(i)
+		#TODO: add else
         
-        JsonObjList = sleepStageMap(JsonObjList, EpochStageMap)
-        gc.collect()
+        JsonObjList = sleepStageMap(JsonObjList, EpochStageMap) #Loop (because we didnt know when we get the stagemap) through all jsonObjects and format stages apropreatly. 
+        gc.collect() #To save memory.
+	
+	#THis was for testing
         #print(type(JsonObjList[0]['subjectid']))
         #print(type(JsonObjListDemo[-1]['subjectid']))
         #exit()
@@ -753,7 +757,10 @@ if __name__ == '__main__':  # bdyetton: I had to edit this file a little, there 
         #print(JsonObjList[0])
         #print(JsonObjListDemo[-1])
         #exit()
+	
+	#Saves json files
         CreateJsonFile(JsonObjListDemo, JsonObjList, file)  # FIXME a more appropreate name would be save json file
+	#This will combine demo info with scorefile info, which is critical when a scorefiles does not contain starttime...
         JsonObjListDemo = []
         JsonObjList = []
         EpochStageMap = []
