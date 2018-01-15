@@ -1,8 +1,15 @@
 # python_parsing
 
+### Parse Score Files
+ParsingScoring.py handles parsing of scorefile in various formats (grass xlsx, txt, edf, edf+, edf++, xml, TODO hume .mat) into scoring information (as a formated dict). 
 
-### ParsingScoring.py
-  #### Requirements:
+To use:
+```
+parse_scoring_file(file, studyid): Takes a scorefile, extracts the stage every 30 seconds and coresponding ofset (since the start of the recording). The start time of a record as a datetime is also returned. Epochs that are not 30 seconds will be resampled to this epoch length (no control for alaising is done).
+
+```
+
+#### Requirements:
     - Libaries Needed: sys,pandas, json, os, mne, parse
     - must download ParsingPandas.py due to the fact that ParsingScoring imports it
     - File structure must be as followed:
@@ -17,5 +24,7 @@
     3) stores each subject as a different Json file in newly created or exisiting directory "jsonObject" as 
     "[subjectid]_studyid[studyid]_visit[visitid].json" or if the person has multiple sessions then the Json file will be
     "[subjectid]_studyid[studyid]_visit[visitid]_session[sessionid].json"
+    
+   
     
               
