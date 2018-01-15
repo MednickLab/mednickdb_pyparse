@@ -4,10 +4,8 @@
 ParsingScoring.py handles parsing of scorefile in various formats (grass xlsx, txt, edf, edf+, edf++, xml, TODO hume .mat) into scoring information (as a formated dict). 
 
 To use:
-```
-parse_scoring_file(file, studyid): Takes a scorefile, extracts the stage every 30 seconds and coresponding ofset (since the start of the recording). The start time of a record as a datetime is also returned. Epochs that are not 30 seconds will be resampled to this epoch length (no control for alaising is done).
-
-```
+```parse_scoring_file(file, studyid)``` 
+Takes a scorefile, extracts the stage every 30 seconds and coresponding ofset (since the start of the recording). The start time of a record as a datetime is also returned. Epochs that are not 30 seconds will be resampled to this epoch length (no control for alaising is done).
 
 #### Requirements:
     - Libaries Needed: sys,pandas, json, os, mne, parse
