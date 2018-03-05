@@ -4,11 +4,24 @@ import pandas as pd
 import numpy
 import ParsingScoring as ps
 import ParsingEDF as pe
+import ParsingPandas as pp
 import json
 import glob
+import datetime
 
-# global variable
-SLEEPMAP = ""
+
+class MyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+        if isinstance(obj, numpy.integer):
+            return int(obj)
+        elif isinstance(obj, numpy.floating):
+            return float(obj)
+        elif isinstance(obj, numpy.ndarray):
+            return obj.tolist()
+        else:
+            return super(MyEncoder, self).default(obj)
 
 # File Types are:
 # - sleep (edf without scoring)
@@ -16,30 +29,6 @@ SLEEPMAP = ""
 # - tabulardata (this is demographics and the like)
 # - sleep diaries (this you can ignore for now, and we can discuss soon)
 # - actigraphy (same as above)
-
-# How is location of stagemap folder passed in?
-def stagemapping(jsondict): #TODO: move stagemapping to parsing_scoreing
-    # Here we find the correct stage map and do mapping
-    if 'studyid' in jsondict.keys:
-        study = jsondict['studyid']
-        # need to figure out how to know hwere stage map located
-        stagemapfiles = ps.getAllFilesInTree(SLEEPMAP)
-        found = False
-        smlocation = ''
-        while (not found) or (study == ''):
-            for i in range(stagemapfiles):
-                if (study + '_') in stagemapfiles[i]:
-                    found = True
-                    smlocation = stagemapfiles[i]
-            if found == False:
-                study = study[:-1]
-        if smlocation == '':
-            print('Unable to find stagemapfiles for study')
-        else:
-            stagemap = ps.MakeJsonObj(smlocation)
-            jsondict = ps.sleepStageMap(jsondict, stagemap)
-    return jsondict
-
 
 # def sleepdiaries_parsing ( file ):
 # CSV files
@@ -55,55 +44,67 @@ def stagemapping(jsondict): #TODO: move stagemapping to parsing_scoreing
 # map key to the other actigraphy mapping files
 # create datatable until EOF
 
-# main function takes in a path to file
-# return as json string
-# if __name__ == '__main__':
-def automated_parsing(filepath, filetype, subject=None, visit=None, session=None, task=None):
-    error = False
-    msg = ""
+
+def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, visitid=None, sessionid=None):
+    """
+    Parses the file at @filepath. Data and meta data are extracted according to the rules specified by
+    @fileformat. Return file is JSON (if sleep or score file) or list of JSON objects (tabular data).
+    Other parameters entered (subjectid, etc) will be passed through to the JSON return object. If any
+    of the data keys are the same as these extra parameters, they will be overwritten.
+
+    This function is called by default on any file upload and will run if fileformat matches any of
+    [sleep, edf, tabular, tabulardata, scorefile].
+
+    """
     jsonobj = []
 
-    base_josnobj = {'subjectid': subject,
-                    'visitid': visit,
-                    'session': session,
-                    'task': task,
-                    'filetype': filetype}
+    base_josnobj = {'studyid': studyid,
+                    'subjectid': subjectid,
+                    'visitid': visitid,
+                    'session': sessionid,
+                    'filetype': filetype,
+                    'fileformat': fileformat}
     base_josnobj = dict((k, v) for k, v in base_josnobj.items() if v is not None)  # Remove None values
 
     # choose correct file type
-    if filetype == "sleep":
+    if fileformat == "sleep" or fileformat == 'edf':
         # call sleep parse function
         jsonobj = pe.EdfParse(filepath)
-    elif filetype == 'scorefile':
+    elif fileformat == 'scorefile':
         # call scoring file parse function
-        jsonobj = ps.MakeJsonObj(filepath)
-    elif filetype == 'tabular':
+        jsonobj = ps.parse_scoring_file(filepath, studyid)
+    elif fileformat == 'tabular' or fileformat == 'tabulardata':
         # call tabulardata file parse function
-        jsonobj = ps.MakeJsonObj(filepath)
+        jsonobj = pp.parse_tabular_file_to_dict(filepath)
+    else:
+        raise ValueError('filetype is unknown')
     #    elif sleepdiaries = filepath:
     # call sleepdiaries parse function
     #    elif actigraphy = filepath:
     # call actigraphy parse function
 
-    # check if error occured
-    if error != 1:
-        if type(jsonobj) is dict:
-            base_josnobj.update(jsonobj)
-            json_out = json.dumps(base_josnobj)
-        elif type(jsonobj) is list:
-            json_out = []
-            for jsonobj_el in jsonobj:
-                temp_base = base_josnobj
-                temp_base.update(jsonobj_el)
-                json_out.append(json.dumps(temp_base))
+    if type(jsonobj) is dict:
+        base_josnobj.update(jsonobj)
+        json_out = json.dumps(base_josnobj, cls=MyEncoder)
+    elif type(jsonobj) is list:
+        json_out = []
+        for jsonobj_el in jsonobj:
+            temp_base = base_josnobj
+            temp_base.update(jsonobj_el)
+            json_out.append(json.dumps(temp_base, cls=MyEncoder))
 
-    return json_out, error, msg
+    return json_out
 
 # for testing
 if __name__ == "__main__":
-    folder_path = "/data/mednickdb/mednickdb_autoupload/scorefile/"
-    file_paths = glob.iglob(folder_path + '*')
-    file_path = "mednickdb_data/MASS/MASS_SS1/edfs/MASS_SS1_subjectid1.edf"
-    for file_path in file_paths:
-        object, error, message = automated_parsing(file_path, 'scorefile')
-        print(object)
+    remote_folder_path = "/data/mednickdb/mednickdb_autoupload/"
+    types_of_files_to_test = ['tabular']
+    local_folder_path = "C:/Users/bdyet/UCIGoogleDrive/dataForDB/test_files/"
+    for data_type in types_of_files_to_test:
+        file_paths = glob.iglob(local_folder_path + data_type + '/' + '*')
+
+        for file_path in file_paths:
+            object, error, message = automated_parsing(file_path,
+                                                       data_type,
+                                                       studyid=file_path.split('\\')[-1].split('_')[0])
+            print(object)

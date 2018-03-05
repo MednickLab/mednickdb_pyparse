@@ -1,31 +1,30 @@
 import pandas as pd
-import json
 
+spell_map = {'subid':'subjectid',
+             'subject':'subjectid',
+             'sub':'subjectid',
+             'subjectnum':'subjectid',
+             'subjnum':'subjectid',
+             'subj':'subjectid',
+             'visit':'visitid',
+             'session':'sessionid',
+             'taskname':'taskid',
+             'task':'taskid',
+             'sess':'session'}
 
 # parsing panda objects returns jason object
-def Parsing(PandaFile):
-    FileKeys = PandaFile.keys()
-    # cycle through keys to see if we get hits on the five keys we want and keep track of which ones we hit
-    hit = []
-
-    count = PandaFile.shape
-    #TODO this does nothing right now, modify so that misspelling get corrected and things like subID -> subjectid
-#     for _key in FileKeys:
-#         if _key == "SubID": 
-#             hit.append("SubID")
-#         elif _key == "Study":
-#             hit.append("Study")
-#         elif _key == "Visit":
-#             hit.append("Visit")
-#         elif _key == "Session":
-#             hit.append("Session")
-#         elif _key == "Task":
-#             hit.append("Task")
-
+def parse_tabular_file_to_dict(file):
+    if 'csv' in file:
+        df = pd.read_csv(file)
+    if 'txt' in file:
+        df = pd.read_csv(file, delimiter='\t')
+    if 'xls' in file or 'xlsx' in file:
+        df = pd.read_excel(file)
     output_dict = []
-    for sub_data in PandaFile.iterrows():
+    for idx, row_data in df.iterrows():
         # print(json.loads(sub_data[1].to_json()))
-        output_dict.append(sub_data[1].to_json())
+        row_data.index = [spell_map[i.lower()] if i in spell_map else i.lower() for i in row_data.index]
+        output_dict.append(row_data)
 
     return output_dict
 
@@ -39,6 +38,6 @@ def main(file):
         temp = pd.read_excel(file)
     elif file.endswith("csv"):
         temp = pd.read_csv(file)
-    List_of_JSON = Parsing(temp)
+    List_of_JSON = parse_tabular_file_to_dict(temp)
     return List_of_JSON
     # main("C:/source/mednickdb/temp/Encoding_Sub1_Visit1.csv")
