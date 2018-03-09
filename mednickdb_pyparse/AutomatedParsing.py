@@ -2,9 +2,9 @@ import mne
 import sys
 import pandas as pd
 import numpy
-import ParsingScoring as ps
-import ParsingEDF as pe
-import ParsingPandas as pp
+import mednickdb_pyparse.ParsingScoring as ps
+import mednickdb_pyparse.ParsingEDF as pe
+import mednickdb_pyparse.ParsingPandas as pp
 import json
 import glob
 import datetime
@@ -56,7 +56,6 @@ def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, v
     [sleep, edf, tabular, tabulardata, scorefile].
 
     """
-    jsonobj = []
 
     base_josnobj = {'studyid': studyid,
                     'subjectid': subjectid,
@@ -78,7 +77,8 @@ def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, v
         jsonobj = pp.parse_tabular_file_to_dict(filepath)
     else:
         raise ValueError('filetype is unknown')
-    #    elif sleepdiaries = filepath:
+
+    #    elif sleepdiaries = filepath: TODO
     # call sleepdiaries parse function
     #    elif actigraphy = filepath:
     # call actigraphy parse function
@@ -94,17 +94,3 @@ def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, v
             json_out.append(json.dumps(temp_base, cls=MyEncoder))
 
     return json_out
-
-# for testing
-if __name__ == "__main__":
-    remote_folder_path = "/data/mednickdb/mednickdb_autoupload/"
-    types_of_files_to_test = ['tabular']
-    local_folder_path = "C:/Users/bdyet/UCIGoogleDrive/dataForDB/test_files/"
-    for data_type in types_of_files_to_test:
-        file_paths = glob.iglob(local_folder_path + data_type + '/' + '*')
-
-        for file_path in file_paths:
-            object, error, message = automated_parsing(file_path,
-                                                       data_type,
-                                                       studyid=file_path.split('\\')[-1].split('_')[0])
-            print(object)

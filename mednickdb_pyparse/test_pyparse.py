@@ -1,4 +1,4 @@
-from AutomatedParsing import automated_parsing
+from mednickdb_pyparse.AutomatedParsing import automated_parsing
 import os
 import json
 

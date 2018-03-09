@@ -6,7 +6,6 @@ import datetime
 import time
 
 
-
 def EdfParse(path):
     """extract metadata from file @path and return in a dictionary"""
     try:

@@ -21,6 +21,7 @@ STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 
 epoch_len = 30
 
+
 def parse_scoring_file(file, studyid):
     json_data = extract_score_data(file, studyid)
     # Do stagemap
