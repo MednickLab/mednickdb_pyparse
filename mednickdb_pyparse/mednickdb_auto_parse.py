@@ -2,26 +2,12 @@ import mne
 import sys
 import pandas as pd
 import numpy
-import mednickdb_pyparse.ParsingScoring as ps
-import mednickdb_pyparse.ParsingEDF as pe
-import mednickdb_pyparse.ParsingPandas as pp
-import json
+from .parse_scorefile import parse_scorefile_to_dict
+from .parse_edf import parse_edf_file_to_dict
+from .parse_tabular import parse_tabular_file_to_dict
 import glob
 import datetime
-
-
-class MyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, (datetime.datetime, datetime.date)):
-            return obj.isoformat()
-        if isinstance(obj, numpy.integer):
-            return int(obj)
-        elif isinstance(obj, numpy.floating):
-            return float(obj)
-        elif isinstance(obj, numpy.ndarray):
-            return obj.tolist()
-        else:
-            return super(MyEncoder, self).default(obj)
+from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 
 # File Types are:
 # - sleep (edf without scoring)
@@ -48,8 +34,8 @@ class MyEncoder(json.JSONEncoder):
 def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, visitid=None, sessionid=None):
     """
     Parses the file at @filepath. Data and meta data are extracted according to the rules specified by
-    @fileformat. Return file is JSON (if sleep or score file) or list of JSON objects (tabular data).
-    Other parameters entered (subjectid, etc) will be passed through to the JSON return object. If any
+    @fileformat. Return file is dict (if sleep or score file) or list of dict objects (tabular data).
+    Other parameters entered (subjectid, etc) will be passed through to the dict return object. If any
     of the data keys are the same as these extra parameters, they will be overwritten.
 
     This function is called by default on any file upload and will run if fileformat matches any of
@@ -57,24 +43,24 @@ def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, v
 
     """
 
-    base_josnobj = {'studyid': studyid,
+    base_dictobj = {'studyid': studyid,
                     'subjectid': subjectid,
                     'visitid': visitid,
                     'session': sessionid,
                     'filetype': filetype,
                     'fileformat': fileformat}
-    base_josnobj = dict((k, v) for k, v in base_josnobj.items() if v is not None)  # Remove None values
+    base_dictobj = {k: v for k, v in base_dictobj.items() if v is not None}  # Remove None values
 
     # choose correct file type
     if fileformat == "sleep" or fileformat == 'edf':
         # call sleep parse function
-        jsonobj = pe.EdfParse(filepath)
+        obj_ret = parse_edf_file_to_dict(filepath)
     elif fileformat == 'scorefile':
         # call scoring file parse function
-        jsonobj = ps.parse_scoring_file(filepath, studyid)
+        obj_ret = parse_scorefile_to_dict(filepath, studyid)
     elif fileformat == 'tabular' or fileformat == 'tabulardata':
         # call tabulardata file parse function
-        jsonobj = pp.parse_tabular_file_to_dict(filepath)
+        obj_ret = parse_tabular_file_to_dict(filepath)
     else:
         raise ValueError('filetype is unknown')
 
@@ -83,14 +69,25 @@ def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, v
     #    elif actigraphy = filepath:
     # call actigraphy parse function
 
-    if type(jsonobj) is dict:
-        base_josnobj.update(jsonobj)
-        json_out = json.dumps(base_josnobj, cls=MyEncoder)
-    elif type(jsonobj) is list:
-        json_out = []
-        for jsonobj_el in jsonobj:
-            temp_base = base_josnobj
-            temp_base.update(jsonobj_el)
-            json_out.append(json.dumps(temp_base, cls=MyEncoder))
+    if type(obj_ret) == list:
+        obj_out = []
+        for obj in obj_ret:
+            base_temp = base_dictobj.copy()
+            base_temp.update(obj)
+            obj_out.append(base_temp)
+    else:
+        obj_out = base_dictobj
+        obj_out.update(obj_ret)
+    return obj_out
 
-    return json_out
+
+if __name__ == '__main__':
+    #This script should be automatically called every few minutes
+    med_api = MednickAPI('http://localhost:8001', 'PyAutoParser')
+    fids = med_api.get_unparsed_files()
+    for fid in fids:
+        f_info = med_api.file_info(fid)
+        data_out = automated_parsing(**f_info)
+        for data in data_out:
+            med_api.upload_data(data, fid=fid)
+

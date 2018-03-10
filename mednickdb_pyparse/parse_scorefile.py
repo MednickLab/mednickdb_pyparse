@@ -5,8 +5,11 @@ import math
 import xml.etree.ElementTree as ET
 import numpy as np
 import scipy.interpolate
+from scipy.io import loadmat
 from mednickdb_pysleep import sleep_architecture
 import datetime
+from mednickdb_pyparse.utils import matfile_loader, mat_datenum_to_py_datetime
+
 
 # Parse score file of various formats.
 # Formats will be automatically detected. Code originally written by Seehoon and Jesse.
@@ -22,28 +25,46 @@ STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 epoch_len = 30
 
 
-def parse_scoring_file(file, studyid):
-    json_data = extract_score_data(file, studyid)
+def parse_scorefile_to_dict(file, studyid):
+    stage_map_dict = get_stagemap(file, studyid)
+    dict_data = extract_score_data(file, stage_map_dict)
+
     # Do stagemap
-    stagemap = pd.read_excel('stagemaps/' + studyid + '_stagemap.xlsx', converters={'mapsfrom': str, 'mapsto': int})
-    if type(json_data['epochstage'][0]) in [int, np.int64]:
-        stagemap['mapsfrom'] = stagemap['mapsfrom'].astype(int)
-    stage_map_dict = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
-    json_data['epochstage'] = [stage_map_dict[x] if x in stage_map_dict else -1 for x in json_data['epochstage']]
-    if all(np.array(json_data['epochstage']) == -1):
+    dict_data['epochstage'] = [stage_map_dict[str(x)] if str(x) in stage_map_dict else -1 for x in dict_data['epochstage']]
+    if all(np.array(dict_data['epochstage']) == -1):
         raise ValueError('All stages are unknown, this is probably an error, maybe the stagemap was not found. Make sure the study name is correct.')
-    if isinstance(json_data['epochoffset'][0], float):
-        json_data['epochoffset'] = [round(x, 2) for x in json_data['epochoffset']]
 
-    minutes_in_stage, perc_in_stage, total_mins = sleep_architecture.sleep_stage_architecture(json_data['epochstage'])
+    if isinstance(dict_data['epochoffset'][0], float):
+        dict_data['epochoffset'] = [round(x, 2) for x in dict_data['epochoffset']]
+
+    minutes_in_stage, perc_in_stage, total_mins = sleep_architecture.sleep_stage_architecture(dict_data['epochstage'])
     for stage, mins in minutes_in_stage.items():
-        json_data['mins_in_'+str(stage)] = mins
-    json_data['sleep_efficiency'] = sleep_architecture.sleep_efficiency(minutes_in_stage, total_mins, wake_stage=0)
-    json_data['total_sleep_time'] = sleep_architecture.total_sleep_time(minutes_in_stage, wake_stage=0)
-    return json_data
+        dict_data['mins_in_'+str(stage)] = mins
+    dict_data['sleep_efficiency'] = sleep_architecture.sleep_efficiency(minutes_in_stage, total_mins, wake_stage=0)
+    dict_data['total_sleep_time'] = sleep_architecture.total_sleep_time(minutes_in_stage, wake_stage=0)
+    return dict_data
 
 
-def extract_score_data(file, studyid):
+def get_stagemap(file, studyid):
+    if file.endswith('.mat'):
+        stagemap_type = 'hume'
+    elif 'MednickLab' in studyid or 'Cellini' in studyid:
+        stagemap_type = 'grass'
+    elif studyid in ['K01', 'SF', 'NP', 'LSD', 'PSTIM', 'SF2014']:
+        stagemap_type = 'grass'
+    elif file.endswith('.xml'):
+        stagemap_type = 'xml'
+    else:
+        stagemap_type = studyid
+
+    stagemap = pd.read_excel('stagemaps/' + stagemap_type + '_stagemap.xlsx',
+                             converters={'mapsfrom': str, 'mapsto': int})
+    stage_map_dict = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
+    return stage_map_dict
+
+
+
+def extract_score_data(file, stagemap):
     if file.endswith("xls") or file.endswith("xlsx") or file.endswith(".csv"):
         xl = pd.ExcelFile(file)
         if 'GraphData' in xl.sheet_names:  # Then we have a mednick type scorefile
@@ -56,12 +77,24 @@ def extract_score_data(file, studyid):
 
     # EDF+ files which contain scoring data
     elif file.endswith(".edf"):
-        return parse_edf_scorefile(file, studyid)
+        return parse_edf_scorefile(file, stagemap)
 
     elif file.endswith('.xml'):  # Some score file were xml...
-        return xml_parse(file, studyid)
+        return xml_parse(file, stagemap)
+
+    elif file.endswith('.mat'):
+        return mat_parse(file)
 
     raise ValueError('ScoreFile not able to be parsed.')
+
+
+def mat_parse(file):
+    hume_dict = matfile_loader(file)
+    dict_obj = {"epochstage": hume_dict['stages'],
+                "epochoffset": hume_dict['stageTime']*hume_dict['win']*2,
+                "starttime": mat_datenum_to_py_datetime(hume_dict['lightsOFF'])} #TODO deal with hume timing issues
+
+    return dict_obj
 
 
 # CODE FROM MNE TO READ KEMP FILES
@@ -105,15 +138,11 @@ def read_edf_annotations(fname, annotation_format="edf/edf+"):
     return good_annot
 
 
-def resample_to_new_epoch_len(annot, studyid, new_epoch_len=30):
+def resample_to_new_epoch_len(annot, stage_map_dict, new_epoch_len=30):
     """Some scorefiles have 20 second epochs, this will resample to some other length (30 generally)."""
     annot.reset_index(inplace=True)
     # This is coupled with stagemaps because we need some way of removing the non stage entries of the annotations
-    stagemap = pd.read_excel('stagemaps/' + studyid + '_stagemap.xlsx', converters={'mapsfrom': str, 'mapsto': int})
-    if type(annot['description'][0]) in [int, np.int64]:
-        stagemap['mapsfrom'] = stagemap['mapsfrom'].astype(int)
-    stage_map_dict = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
-    stage_map_back_dict = {v: k for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
+    stage_map_back_dict = {v: k for k, v in stage_map_dict.items()}
     stage_entries = [True if i in stage_map_dict else False for i in annot['description'].values]
     annot_stage_only = annot.loc[stage_entries, :]
     annot_stage_only.loc[:, 'description'] = annot_stage_only.loc[:, 'description'].map(stage_map_dict)
@@ -127,27 +156,27 @@ def resample_to_new_epoch_len(annot, studyid, new_epoch_len=30):
     return pd.DataFrame({'onset': list(window_onsets), 'description': window_stages, 'duration': durations})
 
 
-def parse_edf_scorefile(path, studyid):
+def parse_edf_scorefile(path, stage_map_dict):
     """Load edf file @path and extract relevant meta data including epoch stages. Depends on MNE."""
 
-    jsonObj = {"epochstage": [], "epochoffset": []}
+    dictObj = {"epochstage": [], "epochoffset": []}
 
     try: #type1
         EDF_file = mne.io.read_raw_edf(path, stim_channel='auto', preload=True, verbose=False)
         raw_annot = mne.io.find_edf_events(EDF_file)
         annot = pd.DataFrame(raw_annot, columns=['onset', 'duration', 'description'])
-        jsonObj['starttime'] = datetime.datetime.fromtimestamp(EDF_file.info['meas_date'])
+        dictObj['starttime'] = datetime.datetime.fromtimestamp(EDF_file.info['meas_date'])
     except TypeError: #type2
         # need to do try and except because edf++ uses different reading style
             annot = read_edf_annotations(path)
     except ValueError: #type3
         annot = read_edf_annotations(path, annotation_format="edf++")
 
-    annot = resample_to_new_epoch_len(annot, studyid, epoch_len)
-    jsonObj['epochstage'] = list(annot['description'].values)
-    jsonObj['epochoffset'] = list(annot['onset'].values)
+    annot = resample_to_new_epoch_len(annot, stage_map_dict, epoch_len)
+    dictObj['epochstage'] = list(annot['description'].values)
+    dictObj['epochoffset'] = list(annot['onset'].values)
 
-    return jsonObj
+    return dictObj
 
 
 def xml_repeater(node):
@@ -172,7 +201,7 @@ def xml_repeater(node):
     return temp
 
 
-def xml_parse(file, studyid):
+def xml_parse(file, stage_map_dict):
     tree = ET.parse(file)
     root = tree.getroot()
     dict_xml = xml_repeater(root)
@@ -194,7 +223,7 @@ def xml_parse(file, studyid):
             temp_dict['duration'].append(float(dict_xml['Duration'][i]))
             temp_dict['onset'].append(float(dict_xml['Start'][i]))
     annot = pd.DataFrame(temp_dict)
-    annot_resampled = resample_to_new_epoch_len(annot, studyid, epoch_len)
+    annot_resampled = resample_to_new_epoch_len(annot, stage_map_dict, epoch_len)
 
     return_dict = {}
     return_dict['epochstage'] = list(annot_resampled['description'].values)
@@ -229,39 +258,39 @@ def select_and_run_parser_function(file):
 
 
 def parse_basic_type_scorefile(file):  # No starttime extracted
-    json_obj = {"epochstage": [], "epochoffset": []}
+    dict_obj = {"epochstage": [], "epochoffset": []}
     time = 0
     for line in file:
         temp = line.split(' ')
         temp = temp[0].split('\t')
         temp[0] = temp[0].strip('\n')
-        json_obj["epochstage"].append(temp[0])
-        json_obj["epochoffset"].append(time)
+        dict_obj["epochstage"].append(temp[0])
+        dict_obj["epochoffset"].append(time)
         time = time + epoch_len
-    return json_obj
+    return dict_obj
 
 
 # Type 1		Example: SpencerLab
 # these files give time in seconds in 30 sec interval
 # start of sleep time is given in demographic file
 def parse_lat_type_scorefile(file):
-    json_obj = {"epochstage": [], "epochoffset": []}
+    dict_obj = {"epochstage": [], "epochoffset": []}
     file.readline()  # done so that we can ignore the first line which just contain variable names
     for line in file:
         temp = line.split('  ')
         if len(temp) == 1:
             temp = line.split('\t')
         temp[-1] = temp[-1].strip('\n')
-        json_obj["epochstage"].append(temp[-1].lstrip(" ").rstrip(" "))
+        dict_obj["epochstage"].append(temp[-1].lstrip(" ").rstrip(" "))
         time = temp[0]
         time = int(time)
-        json_obj["epochoffset"].append(time)
-    return json_obj
+        dict_obj["epochoffset"].append(time)
+    return dict_obj
 
 
 # Type 2 Example: CAPStudy, maybe other phsyionet stuff...
 def parse_full_type_scorefile(file):
-    json_obj = {"epochstage": [], "epochoffset": []}
+    dict_obj = {"epochstage": [], "epochoffset": []}
     # find line with SleepStage
     # find position of SleepStage and Time
     start_split = False
@@ -278,8 +307,8 @@ def parse_full_type_scorefile(file):
                 starttime = full_line[time_pos]
                 get_starttime = False
             if len(full_line) > event_pos and full_line[event_pos].find("MCAP") == -1:
-                json_obj["epochstage"].append(full_line[sleep_stage_pos])
-                json_obj["epochoffset"].append(offset_ticker)
+                dict_obj["epochstage"].append(full_line[sleep_stage_pos])
+                dict_obj["epochoffset"].append(offset_ticker)
                 offset_ticker = epoch_len + offset_ticker
 
         if line.find("Sleep Stage") != -1:
@@ -298,12 +327,12 @@ def parse_full_type_scorefile(file):
             date = full_line[1]
             print(date)
 
-    json_obj['startime'] = datetime.datetime.strptime(date + ' ' + starttime, '%d/%m/%Y %H.%M.%S')
-    return json_obj
+    dict_obj['startime'] = datetime.datetime.strptime(date + ' ' + starttime, '%d/%m/%Y %H.%M.%S')
+    return dict_obj
 
 
 def parse_grass_scorefile(file):
-    json_dict_out = {"epochoffset": [], 'epochstage': []}
+    dict_dict_out = {"epochoffset": [], 'epochstage': []}
 
     list_data = pd.read_excel(file, sheetname="list")
     graph_data = pd.read_excel(file, sheetname="GraphData")
@@ -318,15 +347,15 @@ def parse_grass_scorefile(file):
         if date is not None and time is not None:
             break
 
-    json_dict_out['starttime'] = datetime.datetime.strptime(date + ' ' + time, '%m/%d/%y %H:%M:%S')
+    dict_dict_out['starttime'] = datetime.datetime.strptime(date + ' ' + time, '%m/%d/%y %H:%M:%S')
 
     epoch = 0
     for i in graph_data.iterrows():
         if not (math.isnan(i[1][1])):
-            json_dict_out['epochstage'].append(int(i[1][1]))
-            json_dict_out['epochoffset'].append(epoch)
+            dict_dict_out['epochstage'].append(int(i[1][1]))
+            dict_dict_out['epochoffset'].append(epoch)
             epoch += epoch_len
         else:
             break
 
-    return json_dict_out
+    return dict_dict_out
