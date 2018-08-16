@@ -8,7 +8,7 @@ import scipy.interpolate
 from scipy.io import loadmat
 from mednickdb_pysleep import sleep_architecture
 import datetime
-from mednickdb_pyparse.utils import matfile_loader, mat_datenum_to_py_datetime
+from utils import matfile_loader, mat_datenum_to_py_datetime
 
 
 # Parse score file of various formats.

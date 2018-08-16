@@ -1,0 +1,3 @@
+mne==0.15.2
+pytest-dependency==0.3.2
+win-inet-pton==1.0.1

@@ -2,11 +2,13 @@ import mne
 import sys
 import pandas as pd
 import numpy
-from .parse_scorefile import parse_scorefile_to_dict
-from .parse_edf import parse_edf_file_to_dict
-from .parse_tabular import parse_tabular_file_to_dict
+from parse_scorefile import parse_scorefile_to_dict
+from parse_edf import parse_edf_file_to_dict
+from parse_tabular import parse_tabular_file_to_dict
 import glob
+import time
 import datetime
+import warnings
 from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 
 # File Types are:
@@ -29,12 +31,13 @@ from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 # go line by line down until find '- Epoch-by-Epoch Data -' go down to line 187 which contains keys
 # map key to the other actigraphy mapping files
 # create datatable until EOF
+data_keys = ['_id', 'studyid', 'subjectid', 'versionid', 'visitid', 'sessionid', 'filetype', 'fileformat', 'filepath']
 
 
-def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, visitid=None, sessionid=None):
+def automated_parsing(file_info: dict) -> dict:
     """
-    Parses the file at @filepath. Data and meta data are extracted according to the rules specified by
-    @fileformat. Return file is dict (if sleep or score file) or list of dict objects (tabular data).
+    Parses the file at fileinfo['filepath']. Data and meta data are extracted according to the rules specified by
+    file_info['fileformat']. Return file is dict (if sleep or score file) or list of dict objects (tabular data).
     Other parameters entered (subjectid, etc) will be passed through to the dict return object. If any
     of the data keys are the same as these extra parameters, they will be overwritten.
 
@@ -43,26 +46,21 @@ def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, v
 
     """
 
-    base_dictobj = {'studyid': studyid,
-                    'subjectid': subjectid,
-                    'visitid': visitid,
-                    'session': sessionid,
-                    'filetype': filetype,
-                    'fileformat': fileformat}
-    base_dictobj = {k: v for k, v in base_dictobj.items() if v is not None}  # Remove None values
+    base_dictobj = {k: file_info[k] for k in data_keys if k in file_info}
 
     # choose correct file type
-    if fileformat == "sleep" or fileformat == 'edf':
+    if base_dictobj['fileformat'] == "sleep" or base_dictobj['fileformat'] == 'edf':
         # call sleep parse function
-        obj_ret = parse_edf_file_to_dict(filepath)
-    elif fileformat == 'scorefile':
+        obj_ret = parse_edf_file_to_dict(base_dictobj['filepath'])
+    elif base_dictobj['fileformat'] == 'scorefile':
         # call scoring file parse function
-        obj_ret = parse_scorefile_to_dict(filepath, studyid)
-    elif fileformat == 'tabular' or fileformat == 'tabulardata':
+        obj_ret = parse_scorefile_to_dict(base_dictobj['filepath'], base_dictobj['studyid'])
+    elif base_dictobj['fileformat'] == 'tabular' or base_dictobj['fileformat'] == 'tabulardata':
         # call tabulardata file parse function
-        obj_ret = parse_tabular_file_to_dict(filepath)
+        obj_ret = parse_tabular_file_to_dict(base_dictobj['filepath'])
     else:
-        raise ValueError('filetype is unknown')
+        warnings.warn('- filetype is unknown, skipping')
+        return None
 
     #    elif sleepdiaries = filepath: TODO
     # call sleepdiaries parse function
@@ -83,11 +81,21 @@ def automated_parsing(filepath, filetype, fileformat, studyid, subjectid=None, v
 
 if __name__ == '__main__':
     #This script should be automatically called every few minutes
-    med_api = MednickAPI('http://localhost:8001', 'PyAutoParser')
-    fids = med_api.get_unparsed_files()
-    for fid in fids:
-        f_info = med_api.file_info(fid)
-        data_out = automated_parsing(**f_info)
-        for data in data_out:
-            med_api.upload_data(data, fid=fid)
+    med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'PyAutoParser', password='1234')
+
+    while True:
+        file_infos = med_api.get_unparsed_files()
+        if len(file_infos) > 0:
+            print('Found', len(file_infos), 'unparsed files, beginning parse:')
+            for file_info in file_infos:
+                if 'fileName' in file_info:
+                    print('Found old file')
+                    continue
+                print('\r Working on'+file_info['filename'], end='')
+                data_out = automated_parsing(file_info)
+                if data_out is not None:
+                    for data in data_out:
+                        med_api.upload_data(data, fid=file_info['_id'])
+            print('\rCompleted parse. No errors. Sleeping for 30 seconds.')
+        time.sleep(30)
 
