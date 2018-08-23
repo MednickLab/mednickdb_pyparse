@@ -2,6 +2,7 @@ import mne
 import sys
 import pandas as pd
 import numpy
+import os
 from parse_scorefile import parse_scorefile_to_dict
 from parse_edf import parse_edf_file_to_dict
 from parse_tabular import parse_tabular_file_to_dict
@@ -11,6 +12,9 @@ import datetime
 import warnings
 from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 
+uploads_path = './uploads/' if os.environ['HOME'] is None else '/data/mednick_server/file_uploads/'
+
+"""
 # File Types are:
 # - sleep (edf without scoring)
 # - scoringfile (what you have been dealing with, they could be xlsx, .mat, edfs, etc)
@@ -31,6 +35,7 @@ from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 # go line by line down until find '- Epoch-by-Epoch Data -' go down to line 187 which contains keys
 # map key to the other actigraphy mapping files
 # create datatable until EOF
+"""
 data_keys = ['_id', 'studyid', 'subjectid', 'versionid', 'visitid', 'sessionid', 'filetype', 'fileformat', 'filepath']
 
 
@@ -48,18 +53,24 @@ def automated_parsing(file_info: dict) -> dict:
 
     base_dictobj = {k: file_info[k] for k in data_keys if k in file_info}
 
-    # choose correct file type
-    if base_dictobj['fileformat'] == "sleep" or base_dictobj['fileformat'] == 'edf':
-        # call sleep parse function
-        obj_ret = parse_edf_file_to_dict(base_dictobj['filepath'])
-    elif base_dictobj['fileformat'] == 'scorefile':
-        # call scoring file parse function
-        obj_ret = parse_scorefile_to_dict(base_dictobj['filepath'], base_dictobj['studyid'])
-    elif base_dictobj['fileformat'] == 'tabular' or base_dictobj['fileformat'] == 'tabulardata':
-        # call tabulardata file parse function
-        obj_ret = parse_tabular_file_to_dict(base_dictobj['filepath'])
-    else:
-        warnings.warn('- filetype is unknown, skipping')
+    file_path = base_dictobj['filepath'].replace('./uploads/', uploads_path)
+    try:
+        # choose correct file type
+        if base_dictobj['fileformat'] == "sleep" or base_dictobj['fileformat'] == 'edf':
+            # call sleep parse function
+            obj_ret = parse_edf_file_to_dict(file_path)
+        elif base_dictobj['fileformat'] == 'scorefile':
+            # call scoring file parse function
+            obj_ret = parse_scorefile_to_dict(file_path, base_dictobj['studyid'])
+        elif base_dictobj['fileformat'] == 'tabular' or base_dictobj['fileformat'] == 'tabulardata':
+            # call tabulardata file parse function
+            obj_ret = parse_tabular_file_to_dict(file_path)
+        else:
+            warnings.warn('- filetype is unknown, skipping')
+            return None
+    except AssertionError as e:
+        warnings.warn('Problems parsing file. Error was:\n')
+        print(e)
         return None
 
     #    elif sleepdiaries = filepath: TODO
@@ -84,7 +95,7 @@ if __name__ == '__main__':
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'PyAutoParser', password='1234')
 
     while True:
-        file_infos = med_api.get_unparsed_files()
+        file_infos = med_api.get_unparsed_files(active=True)
         if len(file_infos) > 0:
             print('Found', len(file_infos), 'unparsed files, beginning parse:')
             for file_info in file_infos:
