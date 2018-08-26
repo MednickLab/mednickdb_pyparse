@@ -63,7 +63,6 @@ def get_stagemap(file, studyid):
     return stage_map_dict
 
 
-
 def extract_score_data(file, stagemap):
     if file.endswith("xls") or file.endswith("xlsx") or file.endswith(".csv"):
         xl = pd.ExcelFile(file)
