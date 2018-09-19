@@ -132,7 +132,7 @@ def read_edf_annotations(fname, annotation_format="edf/edf+"):
         good_annot.loc[:, 'duration'] = good_annot['duration'].astype(float)
         good_annot.loc[:, 'onset'] = good_annot['onset'].astype(float)
     else:
-        raise ValueError('Not supported')
+        raise ValueError('Type not supported')
 
     return good_annot
 
@@ -167,7 +167,7 @@ def parse_edf_scorefile(path, stage_map_dict):
         dictObj['starttime'] = datetime.datetime.fromtimestamp(EDF_file.info['meas_date'])
     except TypeError: #type2
         # need to do try and except because edf++ uses different reading style
-            annot = read_edf_annotations(path)
+        annot = read_edf_annotations(path)
     except ValueError: #type3
         annot = read_edf_annotations(path, annotation_format="edf++")
 
