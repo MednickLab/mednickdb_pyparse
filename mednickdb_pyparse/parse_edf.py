@@ -4,10 +4,13 @@ import json
 import sys
 import datetime
 import time
+import os
 
 
 def parse_edf_file_to_dict(path):
     """extract metadata from file @path and return in a dictionary"""
+    assert os.path.splitext(path)[-1].lower() == '.edf', "Only EDFs are supported"
+
     try:
         edf_file = mne.io.read_raw_edf(path, stim_channel=None, verbose=False)
     except RuntimeError:

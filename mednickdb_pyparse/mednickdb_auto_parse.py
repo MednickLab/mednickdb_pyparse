@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 import numpy
 import os
+from inspect import signature
 from parse_scorefile import parse_scorefile_to_dict
 from parse_edf import parse_edf_file_to_dict
 from parse_tabular import parse_tabular_file_to_dict
@@ -93,20 +94,22 @@ def automated_parsing(file_info: dict) -> dict:
 if __name__ == '__main__':
     #This script should be automatically called every few minutes
     med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'PyAutoParser', password='1234')
-
+    upload_kwargs = [k for k,v in signature(med_api.upload_data).parameters.items()]
     while True:
-        file_infos = med_api.get_unparsed_files(active=True)
+        file_infos = med_api.get_unparsed_files(active_only=True)
         if len(file_infos) > 0:
             print('Found', len(file_infos), 'unparsed files, beginning parse:')
             for file_info in file_infos:
                 if 'fileName' in file_info:
                     print('Found old file')
                     continue
-                print('\r Working on'+file_info['filename'], end='')
+                print('\r Working on '+file_info['filename'])
                 data_out = automated_parsing(file_info)
                 if data_out is not None:
                     for data in data_out:
-                        med_api.upload_data(data, fid=file_info['_id'])
+                        kwargs = {k: v for k, v in file_info.items() if k in upload_kwargs}
+                        med_api.upload_data(data=data, fid=file_info['_id'], **kwargs)
+                        print('Uploaded a data row for', file_info['filename'])
+                        print(med_api.get_data(**kwargs))
             print('\rCompleted parse. No errors. Sleeping for 30 seconds.')
         time.sleep(30)
-
