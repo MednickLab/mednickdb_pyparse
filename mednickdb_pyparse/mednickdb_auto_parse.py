@@ -1,20 +1,26 @@
-import mne
-import sys
-import pandas as pd
-import numpy
 import os
+import traceback
 from inspect import signature
 from parse_scorefile import parse_scorefile_to_dict
 from parse_edf import parse_edf_file_to_dict
 from parse_tabular import parse_tabular_file_to_dict
-import glob
 import time
-import datetime
 import warnings
+import sys
+sys.path.append('../../mednickdb_pyapi/')
 from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
+    handlers=[
+        logging.FileHandler("errors.log"),
+        logging.StreamHandler()
+    ])
 
 uploads_path = './uploads/' if os.environ['HOME'] is None else '/data/mednick_server/file_uploads/'
-
+print('Upload path', uploads_path)
 """
 # File Types are:
 # - sleep (edf without scoring)
@@ -52,18 +58,18 @@ def automated_parsing(file_info: dict) -> dict:
 
     """
 
-    base_dictobj = {k: file_info[k] for k in data_keys if k in file_info}
-
-    file_path = base_dictobj['filepath'].replace('./uploads/', uploads_path)
+    file_path = file_info['filepath'].replace('uploads/', '')
+    file_path = uploads_path + file_path
+    print(file_path)
     try:
         # choose correct file type
-        if base_dictobj['fileformat'] == "sleep" or base_dictobj['fileformat'] == 'edf':
+        if file_info['fileformat'] == "sleep" or file_info['fileformat'] == 'edf':
             # call sleep parse function
             obj_ret = parse_edf_file_to_dict(file_path)
-        elif base_dictobj['fileformat'] == 'scorefile':
+        elif file_info['fileformat'] == 'scorefile':
             # call scoring file parse function
-            obj_ret = parse_scorefile_to_dict(file_path, base_dictobj['studyid'])
-        elif base_dictobj['fileformat'] == 'tabular' or base_dictobj['fileformat'] == 'tabulardata':
+            obj_ret = parse_scorefile_to_dict(file_path, file_info['studyid'])
+        elif file_info['fileformat'] == 'tabular' or file_info['fileformat'] == 'tabulardata':
             # call tabulardata file parse function
             obj_ret = parse_tabular_file_to_dict(file_path)
         else:
@@ -79,37 +85,56 @@ def automated_parsing(file_info: dict) -> dict:
     #    elif actigraphy = filepath:
     # call actigraphy parse function
 
-    if type(obj_ret) == list:
-        obj_out = []
-        for obj in obj_ret:
-            base_temp = base_dictobj.copy()
-            base_temp.update(obj)
-            obj_out.append(base_temp)
-    else:
-        obj_out = base_dictobj
-        obj_out.update(obj_ret)
-    return obj_out
+    # if type(obj_ret) == list:
+    #     obj_out = []
+    #     for obj in obj_ret:
+    #         base_temp = file_info.copy()
+    #         base_temp.update(obj)
+    #         obj_out.append(base_temp)
+    # else:
+    #     obj_out = file_info
+    #     obj_out.update(obj_ret)
+    if isinstance(obj_ret, dict):  # if we just have one row, always return a list
+        obj_ret = [obj_ret]
+
+    return obj_ret
 
 
 if __name__ == '__main__':
-    #This script should be automatically called every few minutes
-    med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'PyAutoParser', password='1234')
-    upload_kwargs = [k for k,v in signature(med_api.upload_data).parameters.items()]
-    while True:
-        file_infos = med_api.get_unparsed_files(active_only=True)
+    parse_rate = 5 #seconds per DB query
+    problem_files = []
+    while True: #Run indefinatly
+        try:
+            med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'PyAutoParser', password='1234')
+            upload_kwargs = [k for k, v in signature(med_api.upload_data).parameters.items()]
+            file_infos = med_api.get_unparsed_files(previous_versions=False)
+        except ConnectionError:
+            continue # retry connection
+
         if len(file_infos) > 0:
             print('Found', len(file_infos), 'unparsed files, beginning parse:')
+
             for file_info in file_infos:
-                if 'fileName' in file_info:
-                    print('Found old file')
+                if file_info['filename'] in problem_files:
                     continue
-                print('\r Working on '+file_info['filename'])
-                data_out = automated_parsing(file_info)
-                if data_out is not None:
-                    for data in data_out:
-                        kwargs = {k: v for k, v in file_info.items() if k in upload_kwargs}
-                        med_api.upload_data(data=data, fid=file_info['_id'], **kwargs)
-                        print('Uploaded a data row for', file_info['filename'])
-                        print(med_api.get_data(**kwargs))
-            print('\rCompleted parse. No errors. Sleeping for 30 seconds.')
-        time.sleep(30)
+                try:
+                    print('\r Working on '+file_info['filename'])
+                    data_out = automated_parsing(file_info)
+                    if data_out is not None:
+                        for data in data_out:
+                            file_specifiers = {k: v for k, v in file_info.items() if k in upload_kwargs}
+                            data_keys = list(data.keys())
+                            file_specifiers.update({k:data.pop(k) for k in data_keys if k in upload_kwargs})
+                            med_api.upload_data(data=data, fid=file_info['_id'], **file_specifiers)
+                            print('Uploaded a data row for', file_info['filename'])
+                            print(med_api.get_data(**file_specifiers))
+                    med_api.update_parsed_status(fid=file_info['_id'], status=True)
+
+                except:  # some kind of parsing error on a specific file
+                    problem_files.append(file_info['filename'])
+                    logging.exception('Problem file: ' + file_info['filename'])
+
+        print('\rCompleted parse. Sleeping for', parse_rate, 'seconds. Logger has '+str(len(problem_files))+' problem files')
+        time.sleep(parse_rate)
+
+
