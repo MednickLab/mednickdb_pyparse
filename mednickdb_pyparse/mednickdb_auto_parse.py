@@ -22,12 +22,14 @@ logging.basicConfig(
 uploads_path = './uploads/' if os.environ['HOME'] is None else '/data/mednick_server/file_uploads/'
 print('Upload path', uploads_path)
 """
-# File Types are:
-# - sleep (edf without scoring)
-# - scoringfile (what you have been dealing with, they could be xlsx, .mat, edfs, etc)
-# - tabulardata (this is demographics and the like)
-# - sleep diaries (this you can ignore for now, and we can discuss soon)
-# - actigraphy (same as above)
+# fileformats are:
+        Known parse-able fileformats are currently (others will be ignored by parsing microservices):
+        - "sleep_scoring" - sleep scoring files. Currently supports edf, mat (hume), xml (NSRR), and various tabular types
+        - "tabular" - any tabular-like data, with column headers and cols for specific subjectid, visitid, etc
+        - "eeg" - edf's or other eeg like files. Basically anything the python package MNE can open
+        TODO:
+        - "actigraphy"
+        - "sleep_diaries"
 
 # def sleepdiaries_parsing ( file ):
 # CSV files
@@ -54,7 +56,7 @@ def automated_parsing(file_info: dict) -> dict:
     of the data keys are the same as these extra parameters, they will be overwritten.
 
     This function is called by default on any file upload and will run if fileformat matches any of
-    [sleep, edf, tabular, tabulardata, scorefile].
+    [sleep_scoring, tabular, eeg].
 
     """
 
@@ -63,13 +65,13 @@ def automated_parsing(file_info: dict) -> dict:
     print(file_path)
     try:
         # choose correct file type
-        if file_info['fileformat'] == "sleep" or file_info['fileformat'] == 'edf':
+        if file_info['fileformat'] == "eeg":
             # call sleep parse function
             obj_ret = parse_edf_file_to_dict(file_path)
-        elif file_info['fileformat'] == 'scorefile':
+        elif file_info['fileformat'] == 'sleep_scoring':
             # call scoring file parse function
             obj_ret = parse_scorefile_to_dict(file_path, file_info['studyid'])
-        elif file_info['fileformat'] == 'tabular' or file_info['fileformat'] == 'tabulardata':
+        elif file_info['fileformat'] == 'tabular':
             # call tabulardata file parse function
             obj_ret = parse_tabular_file_to_dict(file_path)
         else:
