@@ -26,8 +26,19 @@ epoch_len = 30
 
 
 def parse_scorefile_to_dict(file, studyid):
+    """
+    Parses a scorefile to a dict that can be uploaded to database
+    :param file: file to parse
+    :param studyid: studyid of file, nessary for handling stage conversion. FIXME this information should be pulled from the database.
+    :return: dict ready to upload, with any new data extracted from file in it. Current variable extracted are:
+     - epochstage: a stage by stage map of sleep e.g. [0 1 2 1 2 3]. 0=wake, 1=stage1, 2=stage2, 3=SWS, REM=4, -1=Unknown
+     - epochoffset: the start time, as a wall-clock time? TODO check me.
+     - sleep_efficeny: standard sleep efficency. sleep time/(sleep + wake time)
+     - total_sleep_time: total time asleep (in stages 1, 2, SWS, REM)
+     - mins_in_X
+    """
     stage_map_dict = get_stagemap(file, studyid)
-    dict_data = extract_score_data(file, stage_map_dict)
+    dict_data = _extract_score_data(file, stage_map_dict)
 
     # Do stagemap
     dict_data['epochstage'] = [stage_map_dict[str(x)] if str(x) in stage_map_dict else -1 for x in dict_data['epochstage']]
@@ -46,6 +57,14 @@ def parse_scorefile_to_dict(file, studyid):
 
 
 def get_stagemap(file, studyid):
+    """
+    Gets the map from for converting a scorefile's stages to the standard format used by the db:
+    0=wake, 1=stage1, 2=stage2, 3=SWS, REM=4, -1=Unknown.
+    TODO this should really be downloaded from the db, and given as an input to this module.
+    :param file: file to get stagemap for
+    :param studyid: the studyid of the file.
+    :return: the stagemap,a dict which converts one stage format to another
+    """
     if file.endswith('.mat'):
         stagemap_type = 'hume'
     elif 'MednickLab' in studyid or 'Cellini' in studyid:
@@ -63,31 +82,42 @@ def get_stagemap(file, studyid):
     return stage_map_dict
 
 
-def extract_score_data(file, stagemap):
+def _extract_score_data(file, stagemap):
+    """
+    Extract score data from file, and pass to the appropriate scoring reading/conversion function
+    :param file: file to extract scoring from
+    :param stagemap: stagemap to use for convert
+    :return: parsed data
+    """
     if file.endswith("xls") or file.endswith("xlsx") or file.endswith(".csv"):
         xl = pd.ExcelFile(file)
         if 'GraphData' in xl.sheet_names:  # Then we have a mednick type scorefile
-            return parse_grass_scorefile(file)
+            return _parse_grass_scorefile(file)
 
     # these are the scoring files (txt)
     elif file.endswith(".txt"):
         file_data = open(file, 'r')
-        return select_and_run_parser_function(file_data)  # This determines which type of txt file is present
+        return _txtfile_select_parser_function(file_data)  # This determines which type of txt file is present
 
     # EDF+ files which contain scoring data
     elif file.endswith(".edf"):
-        return parse_edf_scorefile(file, stagemap)
+        return _parse_edf_scorefile(file, stagemap)
 
     elif file.endswith('.xml'):  # Some score file were xml...
-        return xml_parse(file, stagemap)
+        return _nsrr_xml_parse(file, stagemap)
 
-    elif file.endswith('.mat'):
-        return mat_parse(file)
+    elif file.endswith('.mat'):  # assume that all .mat are hume type
+        return _hume_parse(file)
 
     raise ValueError('ScoreFile not able to be parsed.')
 
 
-def mat_parse(file):
+def _hume_parse(file):
+    """
+    Parse HUME type matlab file
+    :param file: file to parse
+    :return: dict with epochstage, epochoffset, starttime keys
+    """
     hume_dict = matfile_loader(file)
     dict_obj = {"epochstage": hume_dict['stages'],
                 "epochoffset": hume_dict['stageTime']*hume_dict['win']*2,
@@ -96,20 +126,13 @@ def mat_parse(file):
     return dict_obj
 
 
-# CODE FROM MNE TO READ KEMP FILES
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def read_edf_annotations(fname, annotation_format="edf/edf+"):
-    """read_edf_annotations
-
-    Parameters:
-    -----------
-    fname : str
-        Path to file.
-
-    Returns:
-    --------
-    annot : DataFrame
-        The annotations
+def _read_edf_annotations(fname, annotation_format="edf/edf+"):
+    """
+    Read EDF files, some of which that mne cannot handle natively.
+    # CODE PROVIDED BY MNE TO READ KEMP FILES
+    :param fname: Path to file.
+    :param annotation_format: one of ['edf/edf+', 'edf++']
+    :return: annotations to be converted to epochstage format
     """
     with open(fname, 'r', encoding='utf-8',
               errors='ignore') as annotions_file:
@@ -137,8 +160,14 @@ def read_edf_annotations(fname, annotation_format="edf/edf+"):
     return good_annot
 
 
-def resample_to_new_epoch_len(annot, stage_map_dict, new_epoch_len=30):
-    """Some scorefiles have 20 second epochs, this will resample to some other length (30 generally)."""
+def _resample_to_new_epoch_len(annot, stage_map_dict, new_epoch_len=30):
+    """
+    Some scorefiles have 20 second epochs, this will resample to some other length (30 generally).
+    :param annot: a dataframe with onset, duration and description columns.
+    :param stage_map_dict: stagemap dict
+    :param new_epoch_len: the new epoch length to resample to.
+    :return: A dataframe in the same format as the annot input, with the resampled epoch len
+    """
     annot.reset_index(inplace=True)
     # This is coupled with stagemaps because we need some way of removing the non stage entries of the annotations
     stage_map_back_dict = {v: k for k, v in stage_map_dict.items()}
@@ -155,8 +184,13 @@ def resample_to_new_epoch_len(annot, stage_map_dict, new_epoch_len=30):
     return pd.DataFrame({'onset': list(window_onsets), 'description': window_stages, 'duration': durations})
 
 
-def parse_edf_scorefile(path, stage_map_dict):
-    """Load edf file @path and extract relevant meta data including epoch stages. Depends on MNE."""
+def _parse_edf_scorefile(path, stage_map_dict):
+    """
+    Load edf file extract relevant meta data including epoch stages.
+    :param path: file to parse
+    :param stage_map_dict: stagemap
+    :return:
+    """
 
     dictObj = {"epochstage": [], "epochoffset": []}
 
@@ -167,21 +201,26 @@ def parse_edf_scorefile(path, stage_map_dict):
         dictObj['starttime'] = datetime.datetime.fromtimestamp(EDF_file.info['meas_date'])
     except TypeError: #type2
         # need to do try and except because edf++ uses different reading style
-        annot = read_edf_annotations(path)
+        annot = _read_edf_annotations(path)
     except ValueError: #type3
-        annot = read_edf_annotations(path, annotation_format="edf++")
+        annot = _read_edf_annotations(path, annotation_format="edf++")
 
-    annot = resample_to_new_epoch_len(annot, stage_map_dict, epoch_len)
+    annot = _resample_to_new_epoch_len(annot, stage_map_dict, epoch_len)
     dictObj['epochstage'] = list(annot['description'].values)
     dictObj['epochoffset'] = list(annot['onset'].values)
 
     return dictObj
 
 
-def xml_repeater(node):
+def _xml_repeater(node):
+    """
+    Helper to parse xml
+    :param node: input xml to parse
+    :return:
+    """
     temp = {}
     for child in node:
-        J = (xml_repeater(child))
+        J = (_xml_repeater(child))
         if len(J) != 0:
             for key in J.keys():
                 if key in temp.keys():
@@ -200,10 +239,10 @@ def xml_repeater(node):
     return temp
 
 
-def xml_parse(file, stage_map_dict):
+def _nsrr_xml_parse(file, stage_map_dict):
     tree = ET.parse(file)
     root = tree.getroot()
-    dict_xml = xml_repeater(root)
+    dict_xml = _xml_repeater(root)
     temp_dict = {'description': [], 'onset': [], 'duration': []}
 
     for key in dict_xml.keys():
@@ -222,7 +261,7 @@ def xml_parse(file, stage_map_dict):
             temp_dict['duration'].append(float(dict_xml['Duration'][i]))
             temp_dict['onset'].append(float(dict_xml['Start'][i]))
     annot = pd.DataFrame(temp_dict)
-    annot_resampled = resample_to_new_epoch_len(annot, stage_map_dict, epoch_len)
+    annot_resampled = _resample_to_new_epoch_len(annot, stage_map_dict, epoch_len)
 
     return_dict = {}
     return_dict['epochstage'] = list(annot_resampled['description'].values)
@@ -232,15 +271,19 @@ def xml_parse(file, stage_map_dict):
     return return_dict
 
 
-def select_and_run_parser_function(file):
-    """Returns an integer determing which parse method to use
+def _txtfile_select_parser_function(file):
+    """
+    Returns an integer determing which parse method to use
        if found == 0 file contain only s and 0s
        if found == 1 file contain latency and type(sleep stage mode)
-       if found == 2 file contain sleep stage , and time"""
+       if found == 2 file contain sleep stage , and time
+    :param file: file to decide for
+    :return: int to select txt file parse method
+    """
 
-    parsers = {0: parse_basic_type_scorefile,
-               1: parse_lat_type_scorefile,
-               2: parse_full_type_scorefile}
+    parsers = {0: _parse_basic_txt_scorefile,
+               1: _parse_lat_type_txt_scorefile,
+               2: _parse_full_type_txt_scorefile}
 
     key_words = ["latency", "RemLogic"]
     found = 0
@@ -256,7 +299,13 @@ def select_and_run_parser_function(file):
         raise ValueError('txt ScoreFile not able to be parsed.')
 
 
-def parse_basic_type_scorefile(file):  # No starttime extracted
+def _parse_basic_txt_scorefile(file):
+    """
+    Parse the super basic sleep files from Dinklmann
+    No starttime is available.
+    :param file:
+    :return:
+    """
     dict_obj = {"epochstage": [], "epochoffset": []}
     time = 0
     for line in file:
@@ -269,10 +318,14 @@ def parse_basic_type_scorefile(file):  # No starttime extracted
     return dict_obj
 
 
-# Type 1		Example: SpencerLab
-# these files give time in seconds in 30 sec interval
-# start of sleep time is given in demographic file
-def parse_lat_type_scorefile(file):
+def _parse_lat_type_txt_scorefile(file):
+    """
+    Example: SpencerLab
+    These files give time in seconds in 30 sec interval
+    Start of sleep time is not available
+    :param file:
+    :return:
+    """
     dict_obj = {"epochstage": [], "epochoffset": []}
     file.readline()  # done so that we can ignore the first line which just contain variable names
     for line in file:
@@ -287,8 +340,13 @@ def parse_lat_type_scorefile(file):
     return dict_obj
 
 
-# Type 2 Example: CAPStudy, maybe other phsyionet stuff...
-def parse_full_type_scorefile(file):
+def _parse_full_type_txt_scorefile(file):
+    """
+    Parse full type txt file. Example: CAPStudy, maybe other phsyionet stuff...
+    :param file:
+    :return:
+    """
+    # Type 2
     dict_obj = {"epochstage": [], "epochoffset": []}
     # find line with SleepStage
     # find position of SleepStage and Time
@@ -330,7 +388,12 @@ def parse_full_type_scorefile(file):
     return dict_obj
 
 
-def parse_grass_scorefile(file):
+def _parse_grass_scorefile(file):
+    """
+    Parse the grass type scorefile
+    :param file:
+    :return:
+    """
     dict_dict_out = {"epochoffset": [], 'epochstage': []}
 
     list_data = pd.read_excel(file, sheetname="list")

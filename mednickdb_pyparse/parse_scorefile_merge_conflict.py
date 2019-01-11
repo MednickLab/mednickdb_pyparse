@@ -100,7 +100,7 @@ def mat_parse(file):
 # CODE FROM MNE TO READ KEMP FILES
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def read_edf_annotations(fname, annotation_format="edf/edf+"):
-    """read_edf_annotations
+    """_read_edf_annotations
 
     Parameters:
     -----------
@@ -461,7 +461,7 @@ def mat_parse(file):
 # CODE FROM MNE TO READ KEMP FILES
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def read_edf_annotations(fname, annotation_format="edf/edf+"):
-    """read_edf_annotations
+    """_read_edf_annotations
 
     Parameters:
     -----------

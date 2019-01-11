@@ -48,7 +48,7 @@ print('Upload path', uploads_path)
 data_keys = ['_id', 'studyid', 'subjectid', 'versionid', 'visitid', 'sessionid', 'filetype', 'fileformat', 'filepath']
 
 
-def automated_parsing(file_info: dict) -> dict:
+def automated_parsing(file_info: dict) -> list:
     """
     Parses the file at fileinfo['filepath']. Data and meta data are extracted according to the rules specified by
     file_info['fileformat']. Return file is dict (if sleep or score file) or list of dict objects (tabular data).
@@ -58,6 +58,8 @@ def automated_parsing(file_info: dict) -> dict:
     This function is called by default on any file upload and will run if fileformat matches any of
     [sleep_scoring, tabular, eeg].
 
+    :param file_info: file_info of the file to parse (as downloaded from database)
+    :return: data object to upload to the database, may addtionally return files to post to database also
     """
 
     file_path = file_info['filepath'].replace('uploads/', '')
@@ -103,6 +105,11 @@ def automated_parsing(file_info: dict) -> dict:
 
 
 if __name__ == '__main__':
+    """
+    Automatic parsing routine. Will pull from the database every 5 seconds and try to parse whatever is marked as unparsed
+    If some error occurs, this is logged but not raised too, so that the regular db can continue as normal.
+    TODO: we should probably alert an admin in this case (somehow, automatic email?)
+    """
     parse_rate = 5 #seconds per DB query
     problem_files = []
     while True: #Run indefinatly
