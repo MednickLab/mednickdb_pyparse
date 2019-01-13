@@ -1,12 +1,14 @@
 import os
-import traceback
 from inspect import signature
-from parse_scorefile import parse_scorefile_to_dict
-from parse_edf import parse_edf_file_to_dict
-from parse_tabular import parse_tabular_file_to_dict
+print(os.getcwd())
+import sys
+from mednickdb_pyparse.parse_scorefile import parse_scorefile
+from mednickdb_pyparse.parse_edf import parse_eeg_file
+from mednickdb_pyparse.parse_tabular import parse_tabular_file
 import time
 import warnings
-import sys
+
+
 sys.path.append('../../mednickdb_pyapi/')
 from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 import logging
@@ -45,10 +47,10 @@ print('Upload path', uploads_path)
 # map key to the other actigraphy mapping files
 # create datatable until EOF
 """
-data_keys = ['_id', 'studyid', 'subjectid', 'versionid', 'visitid', 'sessionid', 'filetype', 'fileformat', 'filepath']
+data_keys = ['_id', 'studyid', 'subjectid', 'versionid', 'visitid', 'sessionid', 'filetype', 'fileformat']
 
 
-def automated_parsing(file_info: dict) -> list:
+def automated_parsing(file_info=None, get_files_from_server_storage=False, **kwargs: dict) -> list:
     """
     Parses the file at fileinfo['filepath']. Data and meta data are extracted according to the rules specified by
     file_info['fileformat']. Return file is dict (if sleep or score file) or list of dict objects (tabular data).
@@ -56,26 +58,33 @@ def automated_parsing(file_info: dict) -> list:
     of the data keys are the same as these extra parameters, they will be overwritten.
 
     This function is called by default on any file upload and will run if fileformat matches any of
-    [sleep_scoring, tabular, eeg].
+    [sleep_scoring, tabular, eeg, sleep_eeg]. sleep_eeg will parse sleep features, etc. TODO.
 
-    :param file_info: file_info of the file to parse (as downloaded from database)
+    :param: file_info: file_info dict of the file to parse (as downloaded from database).
+    :param kwargs: some of all of the individual keys and values of the file info object (i.e. **file_info).
+    minimum set is filepath, fileformat, studyid. Useful when parsing without the need for a server (i.e. just extracting data from files)
+    :param: get_files_from_server_storage: If files paths should be reletive to server file storage location, or where this file is run from.
     :return: data object to upload to the database, may addtionally return files to post to database also
     """
+    if file_info is None:
+        file_info = kwargs
 
-    file_path = file_info['filepath'].replace('uploads/', '')
-    file_path = uploads_path + file_path
+    file_path = file_info['filepath']
+    if get_files_from_server_storage:
+        file_path = file_path.replace('uploads/', '')
+        file_path = uploads_path + file_path
     print(file_path)
     try:
         # choose correct file type
-        if file_info['fileformat'] == "eeg":
+        if file_info['fileformat'] == "eeg" or file_info['fileformat'] == "sleep_eeg":
             # call sleep parse function
-            obj_ret = parse_edf_file_to_dict(file_path)
+            obj_ret = parse_eeg_file(file_path)
         elif file_info['fileformat'] == 'sleep_scoring':
             # call scoring file parse function
-            obj_ret = parse_scorefile_to_dict(file_path, file_info['studyid'])
+            obj_ret = parse_scorefile(file_path, file_info['studyid'])
         elif file_info['fileformat'] == 'tabular':
             # call tabulardata file parse function
-            obj_ret = parse_tabular_file_to_dict(file_path)
+            obj_ret = parse_tabular_file(file_path)
         else:
             warnings.warn('- filetype is unknown, skipping')
             return None
@@ -89,19 +98,18 @@ def automated_parsing(file_info: dict) -> list:
     #    elif actigraphy = filepath:
     # call actigraphy parse function
 
-    # if type(obj_ret) == list:
-    #     obj_out = []
-    #     for obj in obj_ret:
-    #         base_temp = file_info.copy()
-    #         base_temp.update(obj)
-    #         obj_out.append(base_temp)
-    # else:
-    #     obj_out = file_info
-    #     obj_out.update(obj_ret)
-    if isinstance(obj_ret, dict):  # if we just have one row, always return a list
-        obj_ret = [obj_ret]
+    if type(obj_ret) == list:
+        obj_out = []
+        for obj in obj_ret:
+            base_temp = file_info.copy()
+            base_temp.update(obj)
+            obj_out.append(base_temp)
+    else:
+        obj_out = file_info
+        obj_out.update(obj_ret)
+        obj_out = [obj_out]
 
-    return obj_ret
+    return obj_out
 
 
 if __name__ == '__main__':
@@ -128,9 +136,10 @@ if __name__ == '__main__':
                     continue
                 try:
                     print('\r Working on '+file_info['filename'])
-                    data_out = automated_parsing(file_info)
+                    data_out = automated_parsing(file_info=file_info, get_files_from_server_storage=True)
                     if data_out is not None:
                         for data in data_out:
+                            del data['filepath']  # we don't want to have dead refs, and fid will fill this role
                             file_specifiers = {k: v for k, v in file_info.items() if k in upload_kwargs}
                             data_keys = list(data.keys())
                             file_specifiers.update({k:data.pop(k) for k in data_keys if k in upload_kwargs})

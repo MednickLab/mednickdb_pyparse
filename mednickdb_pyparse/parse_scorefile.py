@@ -5,10 +5,11 @@ import math
 import xml.etree.ElementTree as ET
 import numpy as np
 import scipy.interpolate
-from scipy.io import loadmat
 from mednickdb_pysleep import sleep_architecture
 import datetime
-from utils import matfile_loader, mat_datenum_to_py_datetime
+import sys
+sys.path.append('./')
+from mednickdb_pyparse.utils import hume_matfile_loader, mat_datenum_to_py_datetime
 
 
 # Parse score file of various formats.
@@ -25,7 +26,7 @@ STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 epoch_len = 30
 
 
-def parse_scorefile_to_dict(file, studyid):
+def parse_scorefile(file, studyid):
     """
     Parses a scorefile to a dict that can be uploaded to database
     :param file: file to parse
@@ -118,7 +119,7 @@ def _hume_parse(file):
     :param file: file to parse
     :return: dict with epochstage, epochoffset, starttime keys
     """
-    hume_dict = matfile_loader(file)
+    hume_dict = hume_matfile_loader(file)
     dict_obj = {"epochstage": hume_dict['stages'],
                 "epochoffset": hume_dict['stageTime']*hume_dict['win']*2,
                 "starttime": mat_datenum_to_py_datetime(hume_dict['lightsOFF'])} #TODO deal with hume timing issues
@@ -240,6 +241,12 @@ def _xml_repeater(node):
 
 
 def _nsrr_xml_parse(file, stage_map_dict):
+    """
+    Parsing for NSRR formated xml scorefiles
+    :param file: file object to parse
+    :param stage_map_dict: stage map
+    :return: dict with epochstage, etc
+    """
     tree = ET.parse(file)
     root = tree.getroot()
     dict_xml = _xml_repeater(root)

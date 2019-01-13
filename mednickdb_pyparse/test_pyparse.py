@@ -8,11 +8,12 @@ import datetime
 def test_multiline_tabular():
     dict_out = automated_parsing(filepath="testfiles/testtabular1.xlsx",
                                  fileformat="tabular",
-                                 filetype="Demographics",
+                                 filetype="demographics",
                                  studyid="ExampleStudyA")
     s1 = {
+        'filepath':"testfiles/testtabular1.xlsx",
         "studyid": "ExampleStudyA",
-        "filetype": "Demographics",
+        "filetype": "demographics",
         "fileformat": "tabular",
         "subjectid": 1,
         "age": 18,
@@ -21,8 +22,9 @@ def test_multiline_tabular():
     }
 
     s2 = {
+        'filepath':"testfiles/testtabular1.xlsx",
         "studyid": "ExampleStudyA",
-        "filetype": "Demographics",
+        "filetype": "demographics",
         "fileformat": "tabular",
         "subjectid": 2,
         "age": 22,
@@ -31,8 +33,9 @@ def test_multiline_tabular():
     }
 
     s3 = {
+        'filepath':"testfiles/testtabular1.xlsx",
         "studyid": "ExampleStudyA",
-        "filetype": "Demographics",
+        "filetype": "demographics",
         "fileformat": "tabular",
         "subjectid": 3,
         "age": 20,
@@ -52,6 +55,7 @@ def test_example_task_data():
                                  studyid="ExampleStudyA")
 
     line1 = {
+        'filepath':"testfiles/testexampletask1.xlsx",
         "studyid": "ExampleStudyA",
         "filetype": "ExampleTask1",
         "fileformat": "tabular",
@@ -63,6 +67,7 @@ def test_example_task_data():
     }
 
     line2 = {
+        'filepath': "testfiles/testexampletask1.xlsx",
         "studyid": "ExampleStudyA",
         "filetype": "ExampleTask1",
         "fileformat": "tabular",
@@ -74,6 +79,7 @@ def test_example_task_data():
     }
 
     line3 = {
+        'filepath': "testfiles/testexampletask1.xlsx",
         "studyid": "ExampleStudyA",
         "filetype": "ExampleTask1",
         "fileformat": "tabular",
@@ -85,6 +91,7 @@ def test_example_task_data():
     }
 
     line4 = {
+        'filepath': "testfiles/testexampletask1.xlsx",
         "studyid": "ExampleStudyA",
         "filetype": "ExampleTask1",
         "fileformat": "tabular",
@@ -102,25 +109,26 @@ def test_example_task_data():
 
 def test_edf_parse():
     dict_out = automated_parsing(filepath="testfiles/edf1.edf",
-                                 fileformat="sleep",
-                                 filetype="Raw Sleep",
+                                 fileformat="sleep_eeg",
+                                 filetype="sleep_eeg",
                                  subjectid=1,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="ExampleStudyA")
+                                 studyid="ExampleStudyA")[0]
 
     correct_return = {
+        'filepath':"testfiles/edf1.edf",
         "studyid": "ExampleStudyA",
         "subjectid": 1,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Raw Sleep",
-        "fileformat": "sleep",
-        "edf_meas_date": datetime.datetime(2002, 12, 31, 16, 25, 37),
-        "edf_nchan": 14,
-        "edf_sfreq": 128.0,
-        "edf_subject_info": None,
-        "edf_ch_names": ["Lefteye", "RightEye", "EMG", "C3A2", "C4A1", "ECG", "SpO2", "Soud", "Flow", "Sum", "ribcage",
+        "sessionid": 1,
+        "filetype": "sleep_eeg",
+        "fileformat": "sleep_eeg",
+        "eeg_meas_date": datetime.datetime(2002, 12, 31, 16, 25, 37),
+        "eeg_nchan": 14,
+        "eeg_sfreq": 128.0,
+        "eeg_subject_info": None,
+        "eeg_ch_names": ["Lefteye", "RightEye", "EMG", "C3A2", "C4A1", "ECG", "SpO2", "Soud", "Flow", "Sum", "ribcage",
                          "abdo", "BodyPos", "Pulse"]
     }
 
@@ -129,38 +137,39 @@ def test_edf_parse():
 
 def test_mat_scorefile():
     dict_out = automated_parsing(filepath="testfiles/mattype_scorefile.mat",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="GSF")
+                                 studyid="GSF")[0]
 
-    correct_return = {"studyid": "GSF", "subjectid": 2, "visitid": 1, "session": 1, "filetype": "Scoring",
-                      "fileformat": "scorefile", "epochstage": [0, 0, 1, 1, 2, 2, 3, 3, 2, 2],
+    correct_return = {'filepath':"testfiles/mattype_scorefile.mat","studyid": "GSF", "subjectid": 2, "visitid": 1, "sessionid": 1, "filetype": "sleep_scoring",
+                      "fileformat": "sleep_scoring", "epochstage": [0, 0, 1, 1, 2, 2, 3, 3, 2, 2],
                       "epochoffset": [0.0, 30.0, 60.0, 90.0, 120.0, 150.0, 180.0, 210.0, 240.0, 270.0],
                       "starttime": datetime.datetime(2016, 1, 1, 0, 1, 42, 841003), "mins_in_0": 1.0, "mins_in_1": 1.0, "mins_in_2": 2.0,
-                      "mins_in_3": 1.0, "sleep_efficiency": 0.8, "total_sleep_time": 4.0}
+                      "mins_in_3": 1.0, 'mins_in_4': 0, "sleep_efficiency": 0.8, "total_sleep_time": 4.0}
 
     assert (dict_out == correct_return)
 
 
 def test_grass_scorefile():
     dict_out = automated_parsing(filepath="testfiles/grasstype_scorefile.xls",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="ExampleStudyA")
+                                 studyid="ExampleStudyA")[0]
 
     correct_return = {
+        "filepath":"testfiles/grasstype_scorefile.xls",
         "studyid": "ExampleStudyA",
         "subjectid": 2,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Scoring",
-        "fileformat": "scorefile",
+        "sessionid": 1,
+        "filetype": "sleep_scoring",
+        "fileformat": "sleep_scoring",
         "epochoffset": [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480, 510, 540, 570,
                         600, 630, 660, 690, 720, 750, 780, 810, 840, 870, 900, 930, 960, 990, 1020, 1050, 1080, 1110,
                         1140, 1170, 1200, 1230, 1260, 1290, 1320, 1350, 1380, 1410, 1440, 1470, 1500, 1530, 1560, 1590,
@@ -202,20 +211,21 @@ def test_grass_scorefile():
 
 def test_lat_scorefile():
     dict_out = automated_parsing(filepath="testfiles/lattype_scorefile.txt",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="SpencerLab")
+                                 studyid="SpencerLab")[0]
 
     correct_return = {
+        "filepath":"testfiles/lattype_scorefile.txt",
         "studyid": "SpencerLab",
         "subjectid": 2,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Scoring",
-        "fileformat": "scorefile",
+        "sessionid": 1,
+        "filetype": "sleep_scoring",
+        "fileformat": "sleep_scoring",
         "epochstage": [-1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1, 2, 2, 1, 0, 1, 2, 2, 2, 2, 2,
                        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 3,
                        3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0,
@@ -245,20 +255,21 @@ def test_lat_scorefile():
 
 def test_basic_scorefile():
     dict_out = automated_parsing(filepath="testfiles/basictype_scorefile.txt",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="DinklemannLab")
+                                 studyid="DinklemannLab")[0]
 
     correct_return = {
+        "filepath":"testfiles/basictype_scorefile.txt",
         "studyid": "DinklemannLab",
         "subjectid": 2,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Scoring",
-        "fileformat": "scorefile",
+        "sessionid": 1,
+        "filetype": "sleep_scoring",
+        "fileformat": "sleep_scoring",
         "epochstage": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0,
                        1, 0, 1, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 3, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
                        3, 3, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -363,55 +374,53 @@ def test_basic_scorefile():
 
 def test_full_scorefile():
     dict_out = automated_parsing(filepath="testfiles/fulltype_scorefile.txt",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="CAPStudy")
+                                 studyid="CAPStudy")[0]
 
     correct_return = {
+        "filepath": "testfiles/fulltype_scorefile.txt",
         "studyid": "CAPStudy",
         "subjectid": 2,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Scoring",
-        "fileformat": "scorefile",
-        "epochstage": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, -1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 0, 1, 1, 1, 1, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-                       3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, -1, 2, 2, 2, 2, 2,
-                       2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3,
-                       3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-                       3, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 2, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, -1, -1, -1,
-                       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-                       3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, -1, 2, 2, 2, 2, -1,
-                       -1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 2, 2, -1,
-                       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0,
-                       0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0,
-                       0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1,
-                       1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1,
-                       1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0, 0,
-                       0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 2, 2, -1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, -1, -1, -1, -1, -1, -1,
-                       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                       -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                       0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 0, 1, 1, 1, 1, 2, 2, 2,
-                       2, 2, 2, 2, 2, 2, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                       0],
+        "sessionid": 1,
+        "filetype": "sleep_scoring",
+        "fileformat": "sleep_scoring",
+        "epochstage": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, -1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+                    3, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, -1, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3,
+                    3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+                    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2,
+                    0, 0, 1, 2, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+                    4, 4, 0, 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+                    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, -1, 2, 2, 2, 2, -1, -1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+                    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0,
+                    0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    2, 2, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1,
+                    2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+                    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+                    3, 3, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4,
+                    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+                    1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+                    -1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+                    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+                    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2,
+                    2, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0, 0],
         "epochoffset": [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480, 510, 540, 570,
                         600, 630, 660, 690, 720, 750, 780, 810, 840, 870, 900, 930, 960, 990, 1020, 1050, 1080, 1110,
                         1140, 1170, 1200, 1230, 1260, 1290, 1320, 1350, 1380, 1410, 1440, 1470, 1500, 1530, 1560, 1590,
@@ -488,8 +497,8 @@ def test_full_scorefile():
                         30510, 30540, 30570, 30600, 30630, 30660, 30690, 30720, 30750, 30780, 30810, 30840, 30870,
                         30900],
         "startime": datetime.datetime(2010, 1, 28, 22, 18, 17),
-        "mins_in_0": 53.0, "mins_in_1": 45.5, "mins_in_2": 241.0, "mins_in_3": 83.5,
-        "sleep_efficiency": 0.8747044917257684, "total_sleep_time": 370.0
+        "mins_in_0": 53.0, "mins_in_1": 45.5, "mins_in_2": 241.0, "mins_in_3": 83.5, 'mins_in_4': 89.5,
+        "sleep_efficiency": 0.8965853658536586, "total_sleep_time": 459.5
     }
 
     assert (dict_out == correct_return)
@@ -497,20 +506,21 @@ def test_full_scorefile():
 
 def test_XML_scorefile():
     dict_out = automated_parsing(filepath="testfiles/xmltype_scorefile.xml",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="NSRR")
+                                 studyid="NSRR")[0]
 
     correct_return = {
+        "filepath":"testfiles/xmltype_scorefile.xml",
         "studyid": "NSRR",
         "subjectid": 2,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Scoring",
-        "fileformat": "scorefile",
+        "sessionid": 1,
+        "filetype": "sleep_scoring",
+        "fileformat": "sleep_scoring",
         "epochstage": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -696,19 +706,20 @@ def test_XML_scorefile():
 
 def test_edf1_scorefile():
     dict_out = automated_parsing(filepath="testfiles/edftype1_scorefile.edf",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="WamsleyLab")
+                                 studyid="WamsleyLab")[0]
     correct_return = {
+        "filepath":"testfiles/edftype1_scorefile.edf",
         "studyid": "WamsleyLab",
         "subjectid": 2,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Scoring",
-        "fileformat": "scorefile",
+        "sessionid": 1,
+        "filetype": "sleep_scoring",
+        "fileformat": "sleep_scoring",
         "epochstage": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                        0, 0, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
                        1, 0, 0, 1, 1, 1, 1, 1, 2, 0, 0, 0, 1, 2, 2, 2, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0,
@@ -848,20 +859,21 @@ def test_edf1_scorefile():
 
 def test_edf2_scorefile():
     dict_out = automated_parsing(filepath="testfiles/edftype2_scorefile.edf",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="Kemp")
+                                 studyid="Kemp")[0]
 
     correct_return = {
+        "filepath": "testfiles/edftype2_scorefile.edf",
         "studyid": "Kemp",
         "subjectid": 2,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Scoring",
-        "fileformat": "scorefile",
+        "sessionid": 1,
+        "filetype": "sleep_scoring",
+        "fileformat": "sleep_scoring",
         "epochstage": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -1205,7 +1217,7 @@ def test_edf2_scorefile():
                         78870.0, 78900.0, 78930.0, 78960.0, 78990.0, 79020.0, 79050.0, 79080.0, 79110.0, 79140.0,
                         79170.0, 79200.0, 79230.0, 79260.0, 79290.0, 79320.0, 79350.0, 79380.0, 79410.0, 79440.0,
                         79470.0],
-        "mins_in_0": 998.5, "mins_in_1": 58.5, "mins_in_2": 143.5, "mins_in_3": 124.5,
+        "mins_in_0": 998.5, "mins_in_1": 58.5, "mins_in_2": 143.5, "mins_in_3": 124.5, 'mins_in_4': 0,
         "sleep_efficiency": 0.24641509433962264, "total_sleep_time": 326.5
     }
 
@@ -1214,20 +1226,21 @@ def test_edf2_scorefile():
 
 def test_edf3_scorefile():
     dict_out = automated_parsing(filepath="testfiles/edftype3_scorefile.edf",
-                                 fileformat="scorefile",
-                                 filetype="Scoring",
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring',
                                  subjectid=2,
                                  visitid=1,
                                  sessionid=1,
-                                 studyid="MASS")
+                                 studyid="MASS")[0]
 
     correct_return = {
+        "filepath":"testfiles/edftype3_scorefile.edf",
         "studyid": "MASS",
         "subjectid": 2,
         "visitid": 1,
-        "session": 1,
-        "filetype": "Scoring",
-        "fileformat": "scorefile",
+        "sessionid": 1,
+        "filetype": "sleep_scoring",
+        "fileformat": "sleep_scoring",
         "epochstage": [-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
                        -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,

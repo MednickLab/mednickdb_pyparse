@@ -1,5 +1,6 @@
 import pandas as pd
 
+# Automatic mapping from tabular column names to keys that the database knows how to deal with
 spell_map = {'subid':'subjectid',
              'subject':'subjectid',
              'sub':'subjectid',
@@ -8,18 +9,25 @@ spell_map = {'subid':'subjectid',
              'subjnum':'subjectid',
              'subj':'subjectid',
              'visit':'visitid',
+             'vis':'visitid',
              'session':'sessionid',
-             'version':'versionid',
-             'taskname':'taskid',
-             'task':'taskid',
-             'sess':'session'}
+             'taskname':'filetype',
+             'task':'filetype',
+             'sess':'sessionid'}
 
 
 # parsing panda objects returns jason object
-def parse_tabular_file_to_dict(file):
+def parse_tabular_file(file):
+    """
+    Read in txt, csv, xls, tsv tabular file, and strip out each row as a peice of data (formated as dictionary)
+    Cols are keys, and will be converted to lowercase. Special chars are not allowed, but are not currently checked TODO
+    To push this information to the database, rows should contain the appropriate hierarchical specifiers, e.g. a row for subjectid, etc
+    :param file: tabular filepath to parse
+    :return: a dict or a list of dicts for each row of the tabular file.
+    """
     if 'csv' in file:
         df = pd.read_csv(file)
-    if 'txt' in file:
+    if 'txt' in file or 'tsv' in file:
         df = pd.read_csv(file, delimiter='\t')
     if 'xls' in file or 'xlsx' in file:
         df = pd.read_excel(file)
@@ -31,17 +39,3 @@ def parse_tabular_file_to_dict(file):
         output_list.append(row_data.to_dict())
 
     return output_list
-
-
-# Main
-# main chooses which parsing function is called
-def main(file):
-    List_of_JSON = []
-    temp = []
-    if file.endswith("xls") or file.endswith("xlsx"):
-        temp = pd.read_excel(file)
-    elif file.endswith("csv"):
-        temp = pd.read_csv(file)
-    List_of_JSON = parse_tabular_file_to_dict(temp)
-    return List_of_JSON
-    # main("C:/source/mednickdb/temp/Encoding_Sub1_Visit1.csv")

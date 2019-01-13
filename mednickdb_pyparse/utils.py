@@ -6,6 +6,7 @@ STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
 
 
 def extract_file_tags_from_file_name(filePath): #TODO untested and unused
+    """to delete after adding this functionality to pyapi in the form of an upload helper"""
     out_dict = {}
     studyid = 'n/a'
     subjectid = 'n/a'
@@ -37,8 +38,12 @@ def extract_file_tags_from_file_name(filePath): #TODO untested and unused
     return out_dict
 
 
-def matfile_loader(matfile_path):
-    """Loads a matlab .mat file which contains a struct, and writes fields and values to a dictionary"""
+def hume_matfile_loader(matfile_path):
+    """
+    Loads a hume matlab .mat file which contains a struct, and writes fields and values to a dictionary
+    :param matfile_path: path of matlab file to load
+    :return: dict of matlab information
+    """
     mat_struct = loadmat(matfile_path)
 
     # build a list of keys and values for each entry in the structure
@@ -61,5 +66,9 @@ def matfile_loader(matfile_path):
 
 
 def mat_datenum_to_py_datetime(mat_datenum):
-    """Converts a matlab "datenum" type to a python datetime type"""
+    """
+    Converts a matlab "datenum" type to a python datetime type
+    :param mat_datenum: matlab datenum to conver
+    :return: converted datetime
+    """
     return datetime.fromordinal(int(mat_datenum)) + timedelta(days=mat_datenum % 1) - timedelta(days=366)
