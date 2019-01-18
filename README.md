@@ -1,3 +1,5 @@
+### This REPO IS NOT LONGER IN DEV. Please use the bitbucket version ###
+
 # python_parsing
 A python model for extracting and calculating relevent data and metadata from sleep files (scorefiles, edfs) and task data files (.mat, .csv). 
 
