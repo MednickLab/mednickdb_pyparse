@@ -68,7 +68,7 @@ def parse_scorefile(file, studyid):
     _, first_order, _ = sleep_dynamics.transition_counts(smoothed_epoch_stages, count_self_trans=True, normalize=True)
 
     for idx, from_stage in enumerate(first_order):
-        dict_data['trans_prob_from_'+stages_desc[idx]] = list(from_stage)
+        dict_data['trans_prob_from_'+stages_desc[idx]] = [None if np.isnan(i) else i for i in list(from_stage)]
 
     return dict_data
 
