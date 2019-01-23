@@ -5,25 +5,32 @@ import math
 import xml.etree.ElementTree as ET
 import numpy as np
 import scipy.interpolate
-from mednickdb_pysleep import sleep_architecture
 import datetime
 import sys
+sys.path.append('../../')
+from mednickdb_pysleep.mednickdb_pysleep import utils, sleep_architecture, sleep_dynamics
+
 sys.path.append('./')
 from mednickdb_pyparse.utils import hume_matfile_loader, mat_datenum_to_py_datetime
-
 
 # Parse score file of various formats.
 # Formats will be automatically detected. Code originally written by Seehoon and Jesse.
 # Improved by Ben Yetton.
 
-subidspellings = ["Subject", "subject", "SubjectID", "subjectid", "subjectID", "subid", "subID", "SUBID", "SubID",
-                  "Subject ID", "subject id", "ID", "SF_SubID"]
-starttimespellings = ["starttime", "startime", "start time", "Start Time", "PSG Start Time", "Start"]
-
-# characters that we will strip
-STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
-
+# Scoring Parameters used for MednickDB
 epoch_len = 30
+stages_desc = {
+    0: 'wake',
+    1: 'stage1',
+    2: 'stage2',
+    3: 'sws',
+    4: 'rem',
+    -3: 'movement',
+    -2: 'artifact',
+    -1: 'unknown',
+}
+stage_ids = [0, 1, 2, 3, 4]
+non_stage_ids = [-1, -2, -3]
 
 
 def parse_scorefile(file, studyid):
@@ -50,10 +57,19 @@ def parse_scorefile(file, studyid):
         dict_data['epochoffset'] = [round(x, 2) for x in dict_data['epochoffset']]
 
     minutes_in_stage, perc_in_stage, total_mins = sleep_architecture.sleep_stage_architecture(dict_data['epochstage'])
+
     for stage, mins in minutes_in_stage.items():
-        dict_data['mins_in_'+str(stage)] = mins
-    dict_data['sleep_efficiency'] = sleep_architecture.sleep_efficiency(minutes_in_stage, total_mins, wake_stage=0)
-    dict_data['total_sleep_time'] = sleep_architecture.total_sleep_time(minutes_in_stage, wake_stage=0)
+        dict_data['mins_in_'+stages_desc[stage]] = mins
+    dict_data['sleep_efficiency'] = sleep_architecture.sleep_efficiency(minutes_in_stage, total_mins, wake_stages=[0])
+    dict_data['total_sleep_time'] = sleep_architecture.total_sleep_time(minutes_in_stage, wake_stages=[0])
+    dict_data['sleep_latency'] = sleep_architecture.sleep_latency(dict_data['epochstage'], wake_stage=0)
+    dict_data['num_awakenings'] = sleep_dynamics.num_awakenings(dict_data['epochstage'], waso_stage=0)
+    smoothed_epoch_stages = utils.fill_unknown_stages(dict_data['epochstage'], stages_to_fill=non_stage_ids)
+    _, first_order, _ = sleep_dynamics.transition_counts(smoothed_epoch_stages, count_self_trans=True, normalize=True)
+
+    for idx, from_stage in enumerate(first_order):
+        dict_data['trans_prob_from_'+stages_desc[idx]] = list(from_stage)
+
     return dict_data
 
 
@@ -247,6 +263,10 @@ def _nsrr_xml_parse(file, stage_map_dict):
     :param stage_map_dict: stage map
     :return: dict with epochstage, etc
     """
+
+    # characters that we will strip
+    STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
+
     tree = ET.parse(file)
     root = tree.getroot()
     dict_xml = _xml_repeater(root)
