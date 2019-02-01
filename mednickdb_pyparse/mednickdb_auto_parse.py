@@ -2,9 +2,15 @@ import os
 from inspect import signature
 print(os.getcwd())
 import sys
+'''
 from mednickdb_pyparse.parse_scorefile import parse_scorefile
 from mednickdb_pyparse.parse_edf import parse_eeg_file
 from mednickdb_pyparse.parse_tabular import parse_tabular_file
+'''
+from parse_scorefile import parse_scorefile
+from parse_edf import parse_eeg_file
+from parse_tabular import parse_tabular_file
+
 import time
 import warnings
 
@@ -122,7 +128,8 @@ if __name__ == '__main__':
     problem_files = []
     while True: #Run indefinatly
         try:
-            med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'PyAutoParser', password='1234')
+            #med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'PyAutoParser', password='1234')
+            med_api = MednickAPI('PyAutoParser', password='1234')
             upload_kwargs = [k for k, v in signature(med_api.upload_data).parameters.items()]
             file_infos = med_api.get_unparsed_files(previous_versions=False)
         except ConnectionError:

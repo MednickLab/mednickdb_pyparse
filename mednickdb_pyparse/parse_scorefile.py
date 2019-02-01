@@ -9,8 +9,8 @@ from mednickdb_pysleep import sleep_architecture
 import datetime
 import sys
 sys.path.append('./')
-from mednickdb_pyparse.utils import hume_matfile_loader, mat_datenum_to_py_datetime
-
+#from mednickdb_pyparse.utils import hume_matfile_loader, mat_datenum_to_py_datetime
+from utils import hume_matfile_loader, mat_datenum_to_py_datetime
 
 # Parse score file of various formats.
 # Formats will be automatically detected. Code originally written by Seehoon and Jesse.
