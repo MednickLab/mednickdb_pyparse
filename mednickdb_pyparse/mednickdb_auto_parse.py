@@ -16,6 +16,7 @@ import warnings
 
 
 sys.path.append('../../mednickdb_pyapi/')
+sys.path.append('../../mednickdb_pysleep/')
 from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
 import logging
 

@@ -1,14 +1,11 @@
 chardet==3.0.4
 colorama==0.3.9
 idna==2.6
-numpy==1.14.1
-pandas==0.22.0
 pluggy==0.6.0
 py==1.5.2
 pycparser==2.18
 pyOpenSSL==17.5.0
 PySocks==1.6.8
-pytest==3.4.2
 python-dateutil==2.6.1
 pytz==2018.3
 requests==2.18.4
@@ -25,6 +22,5 @@ xlrd==1.1.0
 win-inet-pton==1.0.1
 wincertstore==0.2
 cryptography==2.3
--e git+https://bitbucket.org/mednicklab/mednickdb_pyapi.git#egg=mednickdb_pyapi
 -e git+https://bitbucket.org/mednicklab/mednickdb_pysleep.git#egg=mednickdb_pysleep
--e git+https://bitbucket.org/mednicklab/mednickdb_pyparse.git#egg=mednickdb_pyparse
+
