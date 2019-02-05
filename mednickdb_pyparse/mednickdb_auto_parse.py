@@ -1,19 +1,17 @@
 import os
 from inspect import signature
-import sys
+import time
+import warnings
+import logging
+from typing import Union, List, Dict, Tuple
+from mednickdb_pyparse.utils import get_stagemap, get_stagemap_by_studyid
 from mednickdb_pyparse.parse_scorefile import parse_scorefile
 from mednickdb_pyparse.parse_edf import parse_eeg_file
 from mednickdb_pyparse.parse_tabular import parse_tabular_file
-import time
-import warnings
-from .utils import get_stagemap, get_stagemap_by_studyid
-from typing import Union, List, Dict, Tuple
+from mednickdb_pyapi import MednickAPI
+
 
 debug = True
-
-sys.path.append('../../mednickdb_pyapi/mednickdb_pyapi/')  # TODO REMOVE when build pipe is complete
-from mednickdb_pyapi import MednickAPI
-import logging
 
 logging.basicConfig(
     level=logging.INFO,

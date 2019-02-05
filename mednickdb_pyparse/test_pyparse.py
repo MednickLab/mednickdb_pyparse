@@ -1,4 +1,4 @@
-from .mednickdb_auto_parse import automated_parsing
+from mednickdb_pyparse.mednickdb_auto_parse import automated_parsing
 import os
 import datetime
 

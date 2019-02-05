@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import os
 import sys
-sys.path.append('../../mednickdb_pyapi/mednickdb_pyapi')  # TODO REMOVE when build pipe is complete
 from mednickdb_pyapi import MednickAPI
 
 

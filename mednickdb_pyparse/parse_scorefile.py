@@ -1,3 +1,6 @@
+"""# Parse score file of various formats.
+# Formats will be automatically detected. Code originally written by Seehoon and Jesse.
+# (massively) Improved by Ben Yetton."""
 import pandas as pd
 import mne
 import re
@@ -5,20 +8,13 @@ import math
 import xml.etree.ElementTree as ET
 import numpy as np
 import scipy.interpolate
-from .utils import hume_matfile_loader, mat_datenum_to_py_datetime
 import datetime
-from .defaults import stages_to_consider, include_self_transitions, wake_stages_to_consider, \
+from mednickdb_pyparse.utils import hume_matfile_loader, mat_datenum_to_py_datetime
+from mednickdb_pyparse.defaults import stages_to_consider, include_self_transitions, wake_stages_to_consider, \
     non_sleep_stages, epoch_len, unknown_stage, sleep_stages
+from mednickdb_pysleep import utils as pysleep_utils
+from mednickdb_pysleep import sleep_architecture, sleep_dynamics
 
-import sys
-sys.path.append('../../')  # TODO remove when pipeline is built
-from mednickdb_pysleep.mednickdb_pysleep import utils, sleep_architecture, sleep_dynamics
-
-
-
-# Parse score file of various formats.
-# Formats will be automatically detected. Code originally written by Seehoon and Jesse.
-# (massively) Improved by Ben Yetton.
 
 def parse_scorefile(file, stage_map):
     """
@@ -54,7 +50,7 @@ def parse_scorefile(file, stage_map):
     scoring_data['total_sleep_time'] = sleep_architecture.total_sleep_time(minutes_in_stage, wake_stages=wake_stages_to_consider)
     scoring_data['sleep_latency'] = sleep_architecture.sleep_latency(scoring_data['epochstage'], wake_stage='wbso', epoch_len=epoch_len)
     scoring_data['num_awakenings'] = sleep_dynamics.num_awakenings(scoring_data['epochstage'], waso_stage='waso')
-    smoothed_epoch_stages = utils.fill_unknown_stages(scoring_data['epochstage'], stages_to_fill=non_sleep_stages)
+    smoothed_epoch_stages = pysleep_utils.fill_unknown_stages(scoring_data['epochstage'], stages_to_fill=non_sleep_stages)
     _, first_order, _ = sleep_dynamics.transition_counts(smoothed_epoch_stages,
                                                          count_self_trans=include_self_transitions,
                                                          normalize=True,
