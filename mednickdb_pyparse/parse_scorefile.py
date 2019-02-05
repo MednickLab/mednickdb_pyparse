@@ -48,17 +48,18 @@ def parse_scorefile(file, stage_map):
         scoring_data['mins_in_'+stage] = mins
     scoring_data['sleep_efficiency'] = sleep_architecture.sleep_efficiency(minutes_in_stage, total_mins, wake_stages=wake_stages_to_consider)
     scoring_data['total_sleep_time'] = sleep_architecture.total_sleep_time(minutes_in_stage, wake_stages=wake_stages_to_consider)
-    scoring_data['sleep_latency'] = sleep_architecture.sleep_latency(scoring_data['epochstage'], wake_stage='wbso', epoch_len=epoch_len)
+    scoring_data['sleep_latency'] = sleep_architecture.sleep_latency(scoring_data['epochstage'], wbso_stage='wbso',
+                                                                     sleep_stages=sleep_stages, epoch_len=epoch_len)
     scoring_data['num_awakenings'] = sleep_dynamics.num_awakenings(scoring_data['epochstage'], waso_stage='waso')
     smoothed_epoch_stages = pysleep_utils.fill_unknown_stages(scoring_data['epochstage'], stages_to_fill=non_sleep_stages)
     _, first_order, _ = sleep_dynamics.transition_counts(smoothed_epoch_stages,
                                                          count_self_trans=include_self_transitions,
                                                          normalize=True,
                                                          stages_to_consider=stages_to_consider,)
-
-    for idx, from_stage in enumerate(first_order):
-        scoring_data['trans_prob_from_'+stages_to_consider[idx]] = [None if np.isnan(i) else i for i in list(from_stage)]
-        assert len(scoring_data['trans_prob_from_'+stages_to_consider[idx]]) == len(stages_to_consider)
+    if first_order is not None:
+        for idx, from_stage in enumerate(first_order):
+            scoring_data['trans_prob_from_'+stages_to_consider[idx]] = [None if np.isnan(i) else i for i in list(from_stage)]
+            assert len(scoring_data['trans_prob_from_'+stages_to_consider[idx]]) == len(stages_to_consider)
 
     bout_durs = sleep_dynamics.bout_durations(scoring_data['epochstage'],
                                               epoch_len=epoch_len,
@@ -116,10 +117,12 @@ def _split_wake(epochstages, wake_base, waso, wbso, wase, sleep_stages):
     trans_to_sleep = np.where(np.diff(epochs_of_sleep) == 1)[0]
     trans_from_sleep = np.where(np.diff(epochs_of_sleep) == -1)[0]
     epochs_of_wake = np.where([1 if epoch == wake_base else 0 for epoch in epochstages])[0]
-    epochstages[epochs_of_wake] = waso
+    epochstages[epochs_of_wake] = wbso
     if len(trans_to_sleep) > 0:
         epochs_of_wbso = epochs_of_wake[epochs_of_wake <= trans_to_sleep[0]]
         epochstages[epochs_of_wbso] = wbso
+        epochs_of_waso = epochs_of_wake[epochs_of_wake > trans_to_sleep[0]]
+        epochstages[epochs_of_waso] = waso
     if len(trans_from_sleep) > 0:
         epochs_of_wase = epochs_of_wake[trans_from_sleep[-1] < epochs_of_wake]
         epochstages[epochs_of_wase] = wase
