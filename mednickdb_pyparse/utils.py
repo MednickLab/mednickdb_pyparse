@@ -1,41 +1,10 @@
-
 from scipy.io import loadmat
 from datetime import datetime, timedelta
 import numpy as np
-STRIP = "' ', ',', '\'', '(', '[', '{', ')', '}', ']'"
-
-
-def extract_file_tags_from_file_name(filePath): #TODO untested and unused
-    """to delete after adding this functionality to pyapi in the form of an upload helper"""
-    out_dict = {}
-    studyid = 'n/a'
-    subjectid = 'n/a'
-    visitid = '1'
-
-    if 'scorefiles' in filePath:
-        studyid = filePath.split('scorefiles')[0]
-        studyid = studyid.split('\\')
-        if studyid[-1] == '':
-            studyid = studyid[-2]
-        else:
-            studyid = studyid[-1]
-        subjectid = filePath.split('scorefiles')[-1]
-        subjectid = subjectid.split('subjectid')[-1]
-        subjectid = subjectid.split('.')[0]
-        if 'visit' in filePath:
-            visitid = subjectid.split('visitid')[-1]
-            visitid = visitid.split('.')[0]
-            subjectid = subjectid.split('visitid')[0]
-
-    subjectid = str(subjectid).lstrip(STRIP).rstrip(STRIP)
-    subjectid = str(subjectid).lstrip('_').rstrip('_')
-    visitid = str(visitid).lstrip(STRIP).rstrip(STRIP)
-    visitid = str(visitid).lstrip('_').rstrip('_')
-    studyid = str(studyid).lstrip(STRIP).rstrip(STRIP)
-    out_dict['subjectid'] = subjectid
-    out_dict['studyid'] = studyid
-    out_dict['visitid'] = visitid
-    return out_dict
+import pandas as pd
+import os
+import sys
+from mednickdb_pyapi import MednickAPI
 
 
 def hume_matfile_loader(matfile_path):
@@ -47,7 +16,7 @@ def hume_matfile_loader(matfile_path):
     mat_struct = loadmat(matfile_path)
 
     # build a list of keys and values for each entry in the structure
-    vals = mat_struct['stageData'][0, 0]  # <-- set the array you want to access.
+    vals = mat_struct['stageData'][0, 0] 
     keys = mat_struct['stageData'][0, 0].dtype.descr
 
     # Assemble the keys and values into variables with the same name as that used in MATLAB
@@ -72,3 +41,48 @@ def mat_datenum_to_py_datetime(mat_datenum):
     :return: converted datetime
     """
     return datetime.fromordinal(int(mat_datenum)) + timedelta(days=mat_datenum % 1) - timedelta(days=366)
+
+
+def get_stagemap(studyid, versionid):
+    """
+    Gets the map from for converting a scorefile's stages to the standard format used by the db. File is grabed from servers data staore.
+    :param studyid: the studyid of the file.
+    :return: the stagemap,a dict which converts one stage format to another
+    :raises: FileNotFoundError if file was not found on the server
+    """
+
+    med_api = MednickAPI(server_address='http://saclab.ss.uci.edu:8000', username='mednickdb.microservices@gmail.com',
+                         password=os.environ['MEDNICKDB_DEFAULT_PW'])
+    stage_maps = med_api.get_data(studyid=studyid, versionid=versionid, filetype='stage_map')
+
+    if stage_maps is None or len(stage_maps) == 0:
+        raise FileNotFoundError('stagemap not found on database')
+
+    stage_map = stage_maps[0]
+    stage_map = {k.replace('stage_map.', ''): v for k, v in stage_map.items()}
+
+    return stage_map
+
+def get_stagemap_by_studyid(file, studyid):
+    """
+    Gets the map from for converting a scorefile's stages to the standard format used by the db. File is grabbed from stagemaps/ dir.
+    :param studyid: the studyid of the file.
+    :param file: The scorefile to parse
+    :return: the stagemap,a dict which converts one stage format to another
+    :raises: FileNotFoundError if file was not found on the server
+    """
+    if file.endswith('.mat'):
+        stagemap_type = 'hume'
+    elif 'MednickLab' in studyid or 'Cellini' in studyid:
+        stagemap_type = 'grass'
+    elif studyid in ['K01', 'SF', 'NP', 'LSD', 'PSTIM', 'SF2014']:
+        stagemap_type = 'grass'
+    elif file.endswith('.xml'):
+        stagemap_type = 'xml'
+    else:
+        stagemap_type = studyid
+
+    stagemap = pd.read_excel('stagemaps/' + stagemap_type + '_stagemap.xlsx',
+                             converters={'mapsfrom': str, 'mapsto': str})
+    stage_map = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
+    return stage_map
