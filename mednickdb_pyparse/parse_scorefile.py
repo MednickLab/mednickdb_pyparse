@@ -5,39 +5,26 @@ import math
 import xml.etree.ElementTree as ET
 import numpy as np
 import scipy.interpolate
+from .utils import hume_matfile_loader, mat_datenum_to_py_datetime
 import datetime
+from .defaults import stages_to_consider, include_self_transitions, wake_stages_to_consider, \
+    non_sleep_stages, epoch_len, unknown_stage, sleep_stages
+
 import sys
-sys.path.append('../../')
+sys.path.append('../../')  # TODO remove when pipeline is built
 from mednickdb_pysleep.mednickdb_pysleep import utils, sleep_architecture, sleep_dynamics
 
-sys.path.append('./')
-from mednickdb_pyparse.utils import hume_matfile_loader, mat_datenum_to_py_datetime
+
 
 # Parse score file of various formats.
 # Formats will be automatically detected. Code originally written by Seehoon and Jesse.
-# Improved by Ben Yetton.
+# (massively) Improved by Ben Yetton.
 
-# Scoring Parameters used for MednickDB
-epoch_len = 30
-stages_desc = {
-    0: 'wake',
-    1: 'stage1',
-    2: 'stage2',
-    3: 'sws',
-    4: 'rem',
-    -3: 'movement',
-    -2: 'artifact',
-    -1: 'unknown',
-}
-stage_ids = [0, 1, 2, 3, 4]
-non_stage_ids = [-1, -2, -3]
-
-
-def parse_scorefile(file, studyid):
+def parse_scorefile(file, stage_map):
     """
     Parses a scorefile to a dict that can be uploaded to database
     :param file: file to parse
-    :param studyid: studyid of file, nessary for handling stage conversion. FIXME this information should be pulled from the database.
+    :param studyid: studyid of file, nessary for handling stage conversion. #TODO test database pull of this info
     :return: dict ready to upload, with any new data extracted from file in it. Current variable extracted are:
      - epochstage: a stage by stage map of sleep e.g. [0 1 2 1 2 3]. 0=wake, 1=stage1, 2=stage2, 3=SWS, REM=4, -1=Unknown
      - epochoffset: the start time, as a wall-clock time? TODO check me.
@@ -45,58 +32,46 @@ def parse_scorefile(file, studyid):
      - total_sleep_time: total time asleep (in stages 1, 2, SWS, REM)
      - mins_in_X
     """
-    stage_map_dict = get_stagemap(file, studyid)
-    dict_data = _extract_score_data(file, stage_map_dict)
+
+    scoring_data = _extract_score_data(file, stage_map)
+    scoring_data.pop('epochoffset') #dont need this clutering up the server
+    scoring_data['epoch_len'] = epoch_len
 
     # Do stagemap
-    dict_data['epochstage'] = [stage_map_dict[str(x)] if str(x) in stage_map_dict else -1 for x in dict_data['epochstage']]
-    if all(np.array(dict_data['epochstage']) == -1):
+    scoring_data['epochstage'] = [stage_map[str(x)] if str(x) in stage_map else unknown_stage for x in scoring_data['epochstage']]
+    if all([stage == unknown_stage for stage in scoring_data['epochstage']]):
         raise ValueError('All stages are unknown, this is probably an error, maybe the stagemap was not found. Make sure the study name is correct.')
 
-    if isinstance(dict_data['epochoffset'][0], float):
-        dict_data['epochoffset'] = [round(x, 2) for x in dict_data['epochoffset']]
+    scoring_data['epochstage'] = _split_wake(scoring_data['epochstage'], wake_base='wake', waso='waso', wbso='wbso', wase='wase', sleep_stages=sleep_stages)
 
-    minutes_in_stage, perc_in_stage, total_mins = sleep_architecture.sleep_stage_architecture(dict_data['epochstage'])
+    minutes_in_stage, perc_in_stage, total_mins = sleep_architecture.sleep_stage_architecture(scoring_data['epochstage'],
+                                                                                              epoch_len=epoch_len,
+                                                                                              stages_to_consider=stages_to_consider)
 
     for stage, mins in minutes_in_stage.items():
-        dict_data['mins_in_'+stages_desc[stage]] = mins
-    dict_data['sleep_efficiency'] = sleep_architecture.sleep_efficiency(minutes_in_stage, total_mins, wake_stages=[0])
-    dict_data['total_sleep_time'] = sleep_architecture.total_sleep_time(minutes_in_stage, wake_stages=[0])
-    dict_data['sleep_latency'] = sleep_architecture.sleep_latency(dict_data['epochstage'], wake_stage=0)
-    dict_data['num_awakenings'] = sleep_dynamics.num_awakenings(dict_data['epochstage'], waso_stage=0)
-    smoothed_epoch_stages = utils.fill_unknown_stages(dict_data['epochstage'], stages_to_fill=non_stage_ids)
-    _, first_order, _ = sleep_dynamics.transition_counts(smoothed_epoch_stages, count_self_trans=True, normalize=True)
+        scoring_data['mins_in_'+stage] = mins
+    scoring_data['sleep_efficiency'] = sleep_architecture.sleep_efficiency(minutes_in_stage, total_mins, wake_stages=wake_stages_to_consider)
+    scoring_data['total_sleep_time'] = sleep_architecture.total_sleep_time(minutes_in_stage, wake_stages=wake_stages_to_consider)
+    scoring_data['sleep_latency'] = sleep_architecture.sleep_latency(scoring_data['epochstage'], wake_stage='wbso', epoch_len=epoch_len)
+    scoring_data['num_awakenings'] = sleep_dynamics.num_awakenings(scoring_data['epochstage'], waso_stage='waso')
+    smoothed_epoch_stages = utils.fill_unknown_stages(scoring_data['epochstage'], stages_to_fill=non_sleep_stages)
+    _, first_order, _ = sleep_dynamics.transition_counts(smoothed_epoch_stages,
+                                                         count_self_trans=include_self_transitions,
+                                                         normalize=True,
+                                                         stages_to_consider=stages_to_consider,)
 
     for idx, from_stage in enumerate(first_order):
-        dict_data['trans_prob_from_'+stages_desc[idx]] = [None if np.isnan(i) else i for i in list(from_stage)]
+        scoring_data['trans_prob_from_'+stages_to_consider[idx]] = [None if np.isnan(i) else i for i in list(from_stage)]
+        assert len(scoring_data['trans_prob_from_'+stages_to_consider[idx]]) == len(stages_to_consider)
 
-    return dict_data
+    bout_durs = sleep_dynamics.bout_durations(scoring_data['epochstage'],
+                                              epoch_len=epoch_len,
+                                              stages_to_consider=stages_to_consider)
 
+    for stage, durs in bout_durs.items():
+        scoring_data['average_bout_duration_' + stage] = np.mean(durs) if len(durs) > 0 else None
 
-def get_stagemap(file, studyid):
-    """
-    Gets the map from for converting a scorefile's stages to the standard format used by the db:
-    0=wake, 1=stage1, 2=stage2, 3=SWS, REM=4, -1=Unknown.
-    TODO this should really be downloaded from the db, and given as an input to this module.
-    :param file: file to get stagemap for
-    :param studyid: the studyid of the file.
-    :return: the stagemap,a dict which converts one stage format to another
-    """
-    if file.endswith('.mat'):
-        stagemap_type = 'hume'
-    elif 'MednickLab' in studyid or 'Cellini' in studyid:
-        stagemap_type = 'grass'
-    elif studyid in ['K01', 'SF', 'NP', 'LSD', 'PSTIM', 'SF2014']:
-        stagemap_type = 'grass'
-    elif file.endswith('.xml'):
-        stagemap_type = 'xml'
-    else:
-        stagemap_type = studyid
-
-    stagemap = pd.read_excel('stagemaps/' + stagemap_type + '_stagemap.xlsx',
-                             converters={'mapsfrom': str, 'mapsto': int})
-    stage_map_dict = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
-    return stage_map_dict
+    return scoring_data
 
 
 def _extract_score_data(file, stagemap):
@@ -128,6 +103,31 @@ def _extract_score_data(file, stagemap):
 
     raise ValueError('ScoreFile not able to be parsed.')
 
+
+def _split_wake(epochstages, wake_base, waso, wbso, wase, sleep_stages):
+    """
+    Convert all the wake before sleep onset to wbso, all the after the last epoch of sleep to wase, and the rest to waso
+    :param epochstages: epoch stages
+    :param wake_base: name of wake before conversion to wbso, waso, wase
+    :param waso: name of waso
+    :param wbso: name of wbso
+    :param wase: name of wase
+    :param sleep_stages: list of stages considered as sleep
+    :return: converted epochstages
+    """
+    epochstages = np.array(epochstages)
+    epochs_of_sleep = [1 if epoch in sleep_stages else 0 for epoch in epochstages]
+    trans_to_sleep = np.where(np.diff(epochs_of_sleep) == 1)[0]
+    trans_from_sleep = np.where(np.diff(epochs_of_sleep) == -1)[0]
+    epochs_of_wake = np.where([1 if epoch == wake_base else 0 for epoch in epochstages])[0]
+    epochstages[epochs_of_wake] = waso
+    if len(trans_to_sleep) > 0:
+        epochs_of_wbso = epochs_of_wake[epochs_of_wake <= trans_to_sleep[0]]
+        epochstages[epochs_of_wbso] = wbso
+    if len(trans_from_sleep) > 0:
+        epochs_of_wase = epochs_of_wake[trans_from_sleep[-1] < epochs_of_wake]
+        epochstages[epochs_of_wase] = wase
+    return epochstages.tolist()
 
 def _hume_parse(file):
     """
@@ -177,26 +177,23 @@ def _read_edf_annotations(fname, annotation_format="edf/edf+"):
     return good_annot
 
 
-def _resample_to_new_epoch_len(annot, stage_map_dict, new_epoch_len=30):
+def _resample_to_new_epoch_len(annot, new_epoch_len=30):
     """
     Some scorefiles have 20 second epochs, this will resample to some other length (30 generally).
     :param annot: a dataframe with onset, duration and description columns.
-    :param stage_map_dict: stagemap dict
     :param new_epoch_len: the new epoch length to resample to.
     :return: A dataframe in the same format as the annot input, with the resampled epoch len
     """
-    annot.reset_index(inplace=True)
     # This is coupled with stagemaps because we need some way of removing the non stage entries of the annotations
-    stage_map_back_dict = {v: k for k, v in stage_map_dict.items()}
-    stage_entries = [True if i in stage_map_dict else False for i in annot['description'].values]
-    annot_stage_only = annot.loc[stage_entries, :]
-    annot_stage_only.loc[:, 'description'] = annot_stage_only.loc[:, 'description'].map(stage_map_dict)
+    stage_map_dict = {v:k for k,v in enumerate(annot['description'].unique())}
+    stage_rev_map_dict = {k:v for k, v in enumerate(annot['description'].unique())}
+    annot.loc[:, 'description'] = annot.loc[:, 'description'].map(stage_map_dict)
 
-    sub_second_offset = annot_stage_only['onset'].values[0] - int(annot_stage_only['onset'].values[0])
-    onset = list(annot_stage_only['onset'].astype(int))
+    sub_second_offset = annot['onset'].values[0] - int(annot['onset'].values[0])
+    onset = list(annot['onset'].astype(int))
     window_onsets = np.array((range(onset[0], onset[-1], new_epoch_len))) + sub_second_offset
-    hypno = scipy.interpolate.interp1d(annot_stage_only['onset'], annot_stage_only['description'], kind='zero')
-    window_stages = [stage_map_back_dict[stage] for stage in hypno(window_onsets)]
+    hypno = scipy.interpolate.interp1d(annot['onset'], annot['description'], kind='zero')
+    window_stages = [stage_rev_map_dict[stage] for stage in hypno(window_onsets)]
     durations = [new_epoch_len for i in window_stages]
     return pd.DataFrame({'onset': list(window_onsets), 'description': window_stages, 'duration': durations})
 
@@ -222,7 +219,10 @@ def _parse_edf_scorefile(path, stage_map_dict):
     except ValueError: #type3
         annot = _read_edf_annotations(path, annotation_format="edf++")
 
-    annot = _resample_to_new_epoch_len(annot, stage_map_dict, epoch_len)
+    valid_stages = annot['description'].isin(stage_map_dict.keys())
+    annot = annot.loc[valid_stages, :]
+
+    annot = _resample_to_new_epoch_len(annot, epoch_len)
     dictObj['epochstage'] = list(annot['description'].values)
     dictObj['epochoffset'] = list(annot['onset'].values)
 
@@ -288,7 +288,9 @@ def _nsrr_xml_parse(file, stage_map_dict):
             temp_dict['duration'].append(float(dict_xml['Duration'][i]))
             temp_dict['onset'].append(float(dict_xml['Start'][i]))
     annot = pd.DataFrame(temp_dict)
-    annot_resampled = _resample_to_new_epoch_len(annot, stage_map_dict, epoch_len)
+    valid_stages = annot['description'].isin(stage_map_dict.keys())
+    annot = annot.loc[valid_stages, :]
+    annot_resampled = _resample_to_new_epoch_len(annot, epoch_len)
 
     return_dict = {}
     return_dict['epochstage'] = list(annot_resampled['description'].values)
