@@ -3,9 +3,9 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 import os
-import sys
 from mednickdb_pyapi import MednickAPI
 
+module_path = os.path.dirname(os.path.abspath(__file__))
 
 def hume_matfile_loader(matfile_path):
     """
@@ -82,7 +82,8 @@ def get_stagemap_by_studyid(file, studyid):
     else:
         stagemap_type = studyid
 
-    stagemap = pd.read_excel('stagemaps/' + stagemap_type + '_stagemap.xlsx',
+    print(module_path)
+    stagemap = pd.read_excel(module_path+'/stagemaps/' + stagemap_type + '_stagemap.xlsx',
                              converters={'mapsfrom': str, 'mapsto': str})
     stage_map = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
     return stage_map

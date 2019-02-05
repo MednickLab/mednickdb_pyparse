@@ -4,10 +4,10 @@ import time
 import warnings
 import logging
 from typing import Union, List, Dict, Tuple
-from mednickdb_pyparse.utils import get_stagemap, get_stagemap_by_studyid
-from mednickdb_pyparse.parse_scorefile import parse_scorefile
-from mednickdb_pyparse.parse_edf import parse_eeg_file
-from mednickdb_pyparse.parse_tabular import parse_tabular_file
+from parse_scorefile import parse_scorefile
+from utils import get_stagemap, get_stagemap_by_studyid
+from parse_edf import parse_eeg_file
+from parse_tabular import parse_tabular_file
 from mednickdb_pyapi import MednickAPI
 
 
@@ -67,7 +67,7 @@ def automated_parsing(file_specifiers=None, get_files_from_server_storage=False,
                 try:
                     stage_map = get_stagemap_by_studyid(file_specifiers['filepath'], file_specifiers['studyid'])
                 except FileNotFoundError:
-                    warnings.warn(file_info['filepath']+' - Stagemap was not found. Skipping parse')
+                    warnings.warn(file_specifiers['filepath']+' - Stagemap was not found. Skipping parse')
                     return None
 
             obj_ret = parse_scorefile(file_path, stage_map)
