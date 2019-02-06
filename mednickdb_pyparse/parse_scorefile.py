@@ -9,8 +9,8 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import scipy.interpolate
 import datetime
-from mednickdb_pyparse.utils import hume_matfile_loader, mat_datenum_to_py_datetime
-from mednickdb_pyparse.defaults import stages_to_consider, include_self_transitions, wake_stages_to_consider, \
+from utils import hume_matfile_loader, mat_datenum_to_py_datetime
+from mednickdb_pysleep.defaults import stages_to_consider, include_self_transitions, wake_stages_to_consider, \
     non_sleep_stages, epoch_len, unknown_stage, sleep_stages
 from mednickdb_pysleep import utils as pysleep_utils
 from mednickdb_pysleep import sleep_architecture, sleep_dynamics
