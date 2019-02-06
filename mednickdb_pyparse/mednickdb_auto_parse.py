@@ -108,12 +108,8 @@ if __name__ == '__main__':
     problem_files = []
     while True: #Run indefinatly
         try:
-<<<<<<< HEAD
-            #med_api = MednickAPI('http://saclab.ss.uci.edu:8000', 'PyAutoParser', password='1234')
-            med_api = MednickAPI('PyAutoParser', password='1234')
-=======
+
             med_api = MednickAPI(server_address='http://saclab.ss.uci.edu:8000', username='mednickdb.microservices@gmail.com', password=os.environ['MEDNICKDB_DEFAULT_PW']) #TODO pull from ENV
->>>>>>> a970fa64127ce7c1ec7b54dbaa708fabd944337e
             upload_kwargs = [k for k, v in signature(med_api.upload_data).parameters.items()]
             file_infos = med_api.get_unparsed_files(previous_versions=False)
         except ConnectionError:
