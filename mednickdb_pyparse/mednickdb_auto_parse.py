@@ -1,26 +1,5 @@
 import os
 from inspect import signature
-<<<<<<< HEAD
-print(os.getcwd())
-import sys
-'''
-from mednickdb_pyparse.parse_scorefile import parse_scorefile
-from mednickdb_pyparse.parse_edf import parse_eeg_file
-from mednickdb_pyparse.parse_tabular import parse_tabular_file
-'''
-from parse_scorefile import parse_scorefile
-from parse_edf import parse_eeg_file
-from parse_tabular import parse_tabular_file
-
-import time
-import warnings
-
-
-sys.path.append('../../mednickdb_pyapi/')
-sys.path.append('../../mednickdb_pysleep/')
-from mednickdb_pyapi.mednickdb_pyapi import MednickAPI
-import logging
-=======
 import time
 import warnings
 import logging
@@ -33,7 +12,7 @@ from mednickdb_pyapi import MednickAPI
 
 
 debug = True
->>>>>>> a970fa64127ce7c1ec7b54dbaa708fabd944337e
+
 
 logging.basicConfig(
     level=logging.INFO,

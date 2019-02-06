@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-#from .mednickdb_auto_parse import automated_parsing
-from mednickdb_auto_parse import automated_parsing
-=======
 from mednickdb_pyparse.mednickdb_auto_parse import automated_parsing
->>>>>>> a970fa64127ce7c1ec7b54dbaa708fabd944337e
 import os
 import datetime
 
