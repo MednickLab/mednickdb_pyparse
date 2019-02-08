@@ -27,4 +27,4 @@ wincertstore==0.2
 cryptography==2.3
 -e git+https://bitbucket.org/mednicklab/mednickdb_pyapi.git#egg=mednickdb_pyapi
 -e git+https://bitbucket.org/mednicklab/mednickdb_pysleep.git#egg=mednickdb_pysleep
--e git+https://bitbucket.org/mednicklab/mednickdb_pyparse.git#egg=mednickdb_pyparse
+

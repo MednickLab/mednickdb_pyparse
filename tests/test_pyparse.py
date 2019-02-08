@@ -10,12 +10,12 @@ import datetime
 
 
 def test_multiline_tabular():
-    dict_out = automated_parsing(filepath="testfiles/testtabular1.xlsx",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/testtabular1.xlsx"),
                                  fileformat="tabular",
                                  filetype="demographics",
                                  studyid="ExampleStudyA")
     s1 = {
-        'filepath':"testfiles/testtabular1.xlsx",
+        'filepath':os.path.join(os.path.dirname(__file__),"testfiles/testtabular1.xlsx"),
         "studyid": "ExampleStudyA",
         "filetype": "demographics",
         "fileformat": "tabular",
@@ -26,7 +26,7 @@ def test_multiline_tabular():
     }
 
     s2 = {
-        'filepath':"testfiles/testtabular1.xlsx",
+        'filepath':os.path.join(os.path.dirname(__file__),"testfiles/testtabular1.xlsx"),
         "studyid": "ExampleStudyA",
         "filetype": "demographics",
         "fileformat": "tabular",
@@ -37,7 +37,7 @@ def test_multiline_tabular():
     }
 
     s3 = {
-        'filepath':"testfiles/testtabular1.xlsx",
+        'filepath':os.path.join(os.path.dirname(__file__),"testfiles/testtabular1.xlsx"),
         "studyid": "ExampleStudyA",
         "filetype": "demographics",
         "fileformat": "tabular",
@@ -53,13 +53,13 @@ def test_multiline_tabular():
 
 def test_example_task_data():
     """Task data is structured in some tabular format, and should be indexed by subject, visit, session"""
-    dict_out = automated_parsing(filepath="testfiles/testexampletask1.xlsx",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/testexampletask1.xlsx"),
                                  fileformat="tabular",
                                  filetype="ExampleTask1",
                                  studyid="ExampleStudyA")
 
     line1 = {
-        'filepath':"testfiles/testexampletask1.xlsx",
+        'filepath':os.path.join(os.path.dirname(__file__),"testfiles/testexampletask1.xlsx"),
         "studyid": "ExampleStudyA",
         "filetype": "ExampleTask1",
         "fileformat": "tabular",
@@ -71,7 +71,7 @@ def test_example_task_data():
     }
 
     line2 = {
-        'filepath': "testfiles/testexampletask1.xlsx",
+        'filepath': os.path.join(os.path.dirname(__file__),"testfiles/testexampletask1.xlsx"),
         "studyid": "ExampleStudyA",
         "filetype": "ExampleTask1",
         "fileformat": "tabular",
@@ -83,7 +83,7 @@ def test_example_task_data():
     }
 
     line3 = {
-        'filepath': "testfiles/testexampletask1.xlsx",
+        'filepath': os.path.join(os.path.dirname(__file__),"testfiles/testexampletask1.xlsx"),
         "studyid": "ExampleStudyA",
         "filetype": "ExampleTask1",
         "fileformat": "tabular",
@@ -95,7 +95,7 @@ def test_example_task_data():
     }
 
     line4 = {
-        'filepath': "testfiles/testexampletask1.xlsx",
+        'filepath':os.path.join(os.path.dirname(__file__), "testfiles/testexampletask1.xlsx"),
         "studyid": "ExampleStudyA",
         "filetype": "ExampleTask1",
         "fileformat": "tabular",
@@ -112,7 +112,7 @@ def test_example_task_data():
 
 
 def test_edf_parse():
-    dict_out = automated_parsing(filepath="testfiles/edf1.edf",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/edf1.edf"),
                                  fileformat="sleep_eeg",
                                  filetype="sleep_eeg",
                                  subjectid=1,
@@ -121,7 +121,7 @@ def test_edf_parse():
                                  studyid="ExampleStudyA")[0]
 
     correct_return = {
-        'filepath':"testfiles/edf1.edf",
+        'filepath':os.path.join(os.path.dirname(__file__),"testfiles/edf1.edf"),
         "studyid": "ExampleStudyA",
         "subjectid": 1,
         "visitid": 1,
@@ -140,7 +140,7 @@ def test_edf_parse():
 
 
 def test_mat_scorefile():
-    dict_out = automated_parsing(filepath="testfiles/mattype_scorefile.mat",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/mattype_scorefile.mat"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -148,7 +148,7 @@ def test_mat_scorefile():
                                  sessionid=1,
                                  studyid="GSF")[0]
 
-    correct_return = {'filepath': 'testfiles/mattype_scorefile.mat', 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring',
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/mattype_scorefile.mat'), 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring',
                       'subjectid': 2, 'visitid': 1, 'sessionid': 1, 'studyid': 'GSF',
                       'starttime': datetime.datetime(2016, 1, 1, 0, 1, 42, 841003),
                       'mins_in_waso': 0.0, 'mins_in_stage1': 1.0, 'mins_in_stage2': 2.0,
@@ -161,7 +161,7 @@ def test_mat_scorefile():
 
 
 def test_grass_scorefile():
-    dict_out = automated_parsing(filepath="testfiles/grasstype_scorefile.xls",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/grasstype_scorefile.xls"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -169,7 +169,7 @@ def test_grass_scorefile():
                                  sessionid=1,
                                  studyid="ExampleStudyA")[0]
 
-    correct_return = {'filepath': 'testfiles/grasstype_scorefile.xls', 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring',
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/grasstype_scorefile.xls'), 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring',
                       'versionid': 1, 'subjectid': 2, 'visitid': 1, 'sessionid': 1, 'studyid': 'ExampleStudyA',
                       'starttime': datetime.datetime(2013, 2, 18, 12, 58, 59),
                       'epoch_len': 30, 'mins_in_waso': 28.0, 'mins_in_stage1': 10.0, 'mins_in_stage2': 23.0, 'mins_in_sws': 34.0,
@@ -186,7 +186,7 @@ def test_grass_scorefile():
 
 
 def test_lat_scorefile():
-    dict_out = automated_parsing(filepath="testfiles/lattype_scorefile.txt",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/lattype_scorefile.txt"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -194,7 +194,7 @@ def test_lat_scorefile():
                                  sessionid=1,
                                  studyid="SpencerLab")[0]
 
-    correct_return = {'filepath': 'testfiles/lattype_scorefile.txt', 'fileformat': 'sleep_scoring',
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/lattype_scorefile.txt'), 'fileformat': 'sleep_scoring',
                       'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2, 'visitid': 1,
                       'sessionid': 1, 'studyid': 'SpencerLab',
                       'epoch_len': 30, 'mins_in_waso': 7.0, 'mins_in_stage1': 9.5, 'mins_in_stage2': 33.0,
@@ -215,7 +215,7 @@ def test_lat_scorefile():
 
 
 def test_basic_scorefile():
-    dict_out = automated_parsing(filepath="testfiles/basictype_scorefile.txt",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/basictype_scorefile.txt"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -223,7 +223,7 @@ def test_basic_scorefile():
                                  sessionid=1,
                                  studyid="DinklemannLab")[0]
 
-    correct_return = {'filepath': 'testfiles/basictype_scorefile.txt', 'fileformat': 'sleep_scoring',
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/basictype_scorefile.txt'), 'fileformat': 'sleep_scoring',
                       'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2, 'visitid': 1, 'sessionid': 1,
                       'studyid': 'DinklemannLab',
                       'epoch_len': 30, 'mins_in_waso': 18.0, 'mins_in_stage1': 27.5, 'mins_in_stage2': 270.5,
@@ -240,7 +240,7 @@ def test_basic_scorefile():
 
 
 def test_full_scorefile():
-    dict_out = automated_parsing(filepath="testfiles/fulltype_scorefile.txt",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/fulltype_scorefile.txt"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -248,7 +248,7 @@ def test_full_scorefile():
                                  sessionid=1,
                                  studyid="CAPStudy")[0]
 
-    correct_return = {'filepath': 'testfiles/fulltype_scorefile.txt', 'fileformat': 'sleep_scoring',
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/fulltype_scorefile.txt'), 'fileformat': 'sleep_scoring',
                       'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2, 'visitid': 1,
                       'sessionid': 1, 'studyid': 'CAPStudy', 'startime': datetime.datetime(2010, 1, 28, 22, 18, 17),
                       'epoch_len': 30, 'mins_in_waso': 41.0, 'mins_in_stage1': 45.5, 'mins_in_stage2': 241.0,
@@ -265,7 +265,7 @@ def test_full_scorefile():
 
 
 def test_XML_scorefile():
-    dict_out = automated_parsing(filepath="testfiles/xmltype_scorefile.xml",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/xmltype_scorefile.xml"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -273,7 +273,7 @@ def test_XML_scorefile():
                                  sessionid=1,
                                  studyid="NSRR")[0]
 
-    correct_return = {'filepath': 'testfiles/xmltype_scorefile.xml', 'fileformat': 'sleep_scoring',
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/xmltype_scorefile.xml'), 'fileformat': 'sleep_scoring',
                       'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2, 'visitid': 1,
                       'sessionid': 1, 'studyid': 'NSRR', 'starttime': datetime.datetime(1900, 1, 1, 20, 33, 32),
                       'epoch_len': 30, 'mins_in_waso': 28.5, 'mins_in_stage1': 18.5, 'mins_in_stage2': 209.5,
@@ -445,7 +445,7 @@ def test_XML_scorefile():
 
 
 def test_edf2_scorefile():
-    dict_out = automated_parsing(filepath="testfiles/edftype2_scorefile.edf",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/edftype2_scorefile.edf"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -453,13 +453,13 @@ def test_edf2_scorefile():
                                  sessionid=1,
                                  studyid="Kemp")[0]
 
-    correct_return = {'filepath': 'testfiles/edftype2_scorefile.edf', 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2, 'visitid': 1, 'sessionid': 1, 'studyid': 'Kemp', 'epoch_len': 30, 'mins_in_waso': 34.0, 'mins_in_stage1': 29.0, 'mins_in_stage2': 125.0, 'mins_in_sws': 110.0, 'mins_in_rem': 62.5, 'sleep_efficiency': 0.9056865464632455, 'total_sleep_time': 326.5, 'sleep_latency': 510.5, 'num_awakenings': 10, 'trans_prob_from_waso': [0.0, 0.9, 0.0, 0.1, 0.0], 'trans_prob_from_stage1': [0.21739130434782608, 0.0, 0.6086956521739131, 0.043478260869565216, 0.13043478260869565], 'trans_prob_from_stage2': [0.025, 0.2, 0.0, 0.725, 0.05], 'trans_prob_from_sws': [0.03225806451612903, 0.12903225806451613, 0.8064516129032258, 0.0, 0.03225806451612903], 'trans_prob_from_rem': [0.5, 0.3333333333333333, 0.16666666666666666, 0.0, 0.0], 'average_bout_duration_waso': 3.4, 'average_bout_duration_stage1': 1.2083333333333333, 'average_bout_duration_stage2': 3.125, 'average_bout_duration_sws': 3.5483870967741935, 'average_bout_duration_rem': 10.416666666666666}
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/edftype2_scorefile.edf'), 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2, 'visitid': 1, 'sessionid': 1, 'studyid': 'Kemp', 'epoch_len': 30, 'mins_in_waso': 34.0, 'mins_in_stage1': 29.0, 'mins_in_stage2': 125.0, 'mins_in_sws': 110.0, 'mins_in_rem': 62.5, 'sleep_efficiency': 0.9056865464632455, 'total_sleep_time': 326.5, 'sleep_latency': 510.5, 'num_awakenings': 10, 'trans_prob_from_waso': [0.0, 0.9, 0.0, 0.1, 0.0], 'trans_prob_from_stage1': [0.21739130434782608, 0.0, 0.6086956521739131, 0.043478260869565216, 0.13043478260869565], 'trans_prob_from_stage2': [0.025, 0.2, 0.0, 0.725, 0.05], 'trans_prob_from_sws': [0.03225806451612903, 0.12903225806451613, 0.8064516129032258, 0.0, 0.03225806451612903], 'trans_prob_from_rem': [0.5, 0.3333333333333333, 0.16666666666666666, 0.0, 0.0], 'average_bout_duration_waso': 3.4, 'average_bout_duration_stage1': 1.2083333333333333, 'average_bout_duration_stage2': 3.125, 'average_bout_duration_sws': 3.5483870967741935, 'average_bout_duration_rem': 10.416666666666666}
 
     assert all([dict_out[k] == correct_return[k] for k in correct_return.keys()])
 
 
 def test_edf3_scorefile():
-    dict_out = automated_parsing(filepath="testfiles/edftype3_scorefile.edf",
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/edftype3_scorefile.edf"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -467,6 +467,6 @@ def test_edf3_scorefile():
                                  sessionid=1,
                                  studyid="MASS")[0]
 
-    correct_return = {'filepath': 'testfiles/edftype3_scorefile.edf', 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2, 'visitid': 1, 'sessionid': 1, 'studyid': 'MASS', 'epoch_len': 30, 'mins_in_waso': 8.5, 'mins_in_stage1': 15.5, 'mins_in_stage2': 164.0, 'mins_in_sws': 60.0, 'mins_in_rem': 128.5, 'sleep_efficiency': 0.9774236387782205, 'total_sleep_time': 368.0, 'sleep_latency': 46.5, 'num_awakenings': 14, 'trans_prob_from_waso': [0.0, 0.7857142857142857, 0.14285714285714285, 0.0, 0.07142857142857142], 'trans_prob_from_stage1': [0.10526315789473684, 0.0, 0.8421052631578947, 0.0, 0.05263157894736842], 'trans_prob_from_stage2': [0.24390243902439024, 0.07317073170731707, 0.0, 0.5121951219512195, 0.17073170731707318], 'trans_prob_from_sws': [0.0, 0.0, 0.9523809523809523, 0.0, 0.047619047619047616], 'trans_prob_from_rem': [0.2222222222222222, 0.4444444444444444, 0.3333333333333333, 0.0, 0.0], 'average_bout_duration_waso': 0.6071428571428571, 'average_bout_duration_stage1': 0.8157894736842105, 'average_bout_duration_stage2': 4.0, 'average_bout_duration_sws': 2.857142857142857, 'average_bout_duration_rem': 12.85}
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/edftype3_scorefile.edf'), 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2, 'visitid': 1, 'sessionid': 1, 'studyid': 'MASS', 'epoch_len': 30, 'mins_in_waso': 8.5, 'mins_in_stage1': 15.5, 'mins_in_stage2': 164.0, 'mins_in_sws': 60.0, 'mins_in_rem': 128.5, 'sleep_efficiency': 0.9774236387782205, 'total_sleep_time': 368.0, 'sleep_latency': 46.5, 'num_awakenings': 14, 'trans_prob_from_waso': [0.0, 0.7857142857142857, 0.14285714285714285, 0.0, 0.07142857142857142], 'trans_prob_from_stage1': [0.10526315789473684, 0.0, 0.8421052631578947, 0.0, 0.05263157894736842], 'trans_prob_from_stage2': [0.24390243902439024, 0.07317073170731707, 0.0, 0.5121951219512195, 0.17073170731707318], 'trans_prob_from_sws': [0.0, 0.0, 0.9523809523809523, 0.0, 0.047619047619047616], 'trans_prob_from_rem': [0.2222222222222222, 0.4444444444444444, 0.3333333333333333, 0.0, 0.0], 'average_bout_duration_waso': 0.6071428571428571, 'average_bout_duration_stage1': 0.8157894736842105, 'average_bout_duration_stage2': 4.0, 'average_bout_duration_sws': 2.857142857142857, 'average_bout_duration_rem': 12.85}
 
     assert all([dict_out[k] == correct_return[k] for k in correct_return.keys()])
