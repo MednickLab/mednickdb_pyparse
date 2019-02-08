@@ -15,6 +15,7 @@ pipelines:
     - step:
         services:
           - docker
+        name: built and test
         script: # Modify the commands below to build your repository.
           # Set $DOCKER_HUB_USERNAME and $DOCKER_HUB_PASSWORD as environment variables in repository settings
           #- export IMAGE_NAME=your-Dockerhub-account/your-docker-image-name:$BITBUCKET_COMMIT
@@ -26,3 +27,12 @@ pipelines:
           #- docker login --username $DOCKER_HUB_USERNAME --password $DOCKER_HUB_PASSWORD
           # push the new Docker image to the Docker registry
           #- docker push $IMAGE_NAME
+    - step:
+        services:
+          - docker
+        name: deploy to dockerhub
+        script:
+          - export IMAGE_NAME=mednickdb/pyparse:$BITBUCKET_COMMIT
+          - docker build -t $IMAGE_NAME .
+          - docker login --username $DOCKER_HUB_USERNAME --password $DOCKER_HUB_PASSWORD
+          - docker push $IMAGE_NAME
