@@ -32,7 +32,7 @@ pipelines:
           - docker
         name: deploy to dockerhub
         script:
-          - export IMAGE_NAME=mednickdb/pyparse:$BITBUCKET_COMMIT
+          - export IMAGE_NAME=mednickdb/pyparse:latest
           - docker build -t $IMAGE_NAME .
           - docker login --username $DOCKER_HUB_USERNAME --password $DOCKER_HUB_PASSWORD
           - docker push $IMAGE_NAME
