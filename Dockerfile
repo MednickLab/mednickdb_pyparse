@@ -11,4 +11,4 @@ RUN pip install -r requirements.txt
 RUN sh setup_env.sh
 ENV MEDNICKDB_DEFAULT_PW Nap4life!!!
 #VOLUME mednickdb_pyparse/uploads/
-#CMD ["python", "mednickdb_pyparse/mednickdb_auto_parse.py"]
+CMD ["python", "mednickdb_pyparse/mednickdb_auto_parse.py"]
