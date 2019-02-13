@@ -13,6 +13,7 @@ from mednickdb_pyapi import MednickAPI
 
 debug = True
 
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s",
@@ -106,6 +107,7 @@ if __name__ == '__main__':
     problem_files = []
     while True: #Run indefinatly
         try:
+
             med_api = MednickAPI(server_address='http://saclab.ss.uci.edu:8000', username='mednickdb.microservices@gmail.com', password=os.environ['MEDNICKDB_DEFAULT_PW']) #TODO pull from ENV
             upload_kwargs = [k for k, v in signature(med_api.upload_data).parameters.items()]
             file_infos = med_api.get_unparsed_files(previous_versions=False)

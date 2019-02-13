@@ -16,6 +16,7 @@ from mednickdb_pysleep import utils as pysleep_utils
 from mednickdb_pysleep import sleep_architecture, sleep_dynamics
 
 
+
 def parse_scorefile(file, stage_map):
     """
     Parses a scorefile to a dict that can be uploaded to database
