@@ -43,9 +43,9 @@ def mat_datenum_to_py_datetime(mat_datenum):
     return datetime.fromordinal(int(mat_datenum)) + timedelta(days=mat_datenum % 1) - timedelta(days=366)
 
 
-def get_stagemap(studyid, versionid):
+def get_stagemap(studyid, versionid, file_upload_prefix):
     """
-    Gets the map from for converting a scorefile's stages to the standard format used by the db. File is grabed from servers data staore.
+    Gets the map from for converting a scorefile's stages to the standard format used by the db. File is grabbed from servers data store.
     :param studyid: the studyid of the file.
     :return: the stagemap,a dict which converts one stage format to another
     :raises: FileNotFoundError if file was not found on the server
@@ -53,13 +53,16 @@ def get_stagemap(studyid, versionid):
 
     med_api = MednickAPI(server_address='http://saclab.ss.uci.edu:8000', username='mednickdb.microservices@gmail.com',
                          password=os.environ['MEDNICKDB_DEFAULT_PW'])
-    stage_maps = med_api.get_data(studyid=studyid, versionid=versionid, filetype='stage_map')
+
+    stage_maps = med_api.get_files(studyid=studyid, versionid=versionid, filetype='stage_map')
 
     if stage_maps is None or len(stage_maps) == 0:
         raise FileNotFoundError('stagemap not found on database')
 
     stage_map = stage_maps[0]
-    stage_map = {k.replace('stage_map.', ''): v for k, v in stage_map.items()}
+    stagemap = pd.read_excel(file_upload_prefix+stage_map['filepath'],
+                             converters={'mapsfrom': str, 'mapsto': str})
+    stage_map = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
 
     return stage_map
 
@@ -82,7 +85,6 @@ def get_stagemap_by_studyid(file, studyid):
     else:
         stagemap_type = studyid
 
-    print(module_path)
     stagemap = pd.read_excel(module_path+'/stagemaps/' + stagemap_type + '_stagemap.xlsx',
                              converters={'mapsfrom': str, 'mapsto': str})
     stage_map = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}

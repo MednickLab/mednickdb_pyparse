@@ -5,7 +5,7 @@ import warnings
 import logging
 from typing import Union, List, Dict, Tuple
 from parse_scorefile import parse_scorefile
-from utils import get_stagemap, get_stagemap_by_studyid
+from pyparse_utils import get_stagemap, get_stagemap_by_studyid
 from parse_edf import parse_eeg_file
 from parse_tabular import parse_tabular_file
 from mednickdb_pyapi import MednickAPI
@@ -21,10 +21,10 @@ logging.basicConfig(
         logging.StreamHandler()
     ])
 
-uploads_path = './uploads/' if os.environ['HOME'] is None else '/data/mednick_server/file_uploads/'
+uploads_prefix = '' if os.environ['HOME'] is None else '/data/mednick_server/'
 
 if debug:
-    print('Upload path', uploads_path)
+    print('Upload path', uploads_prefix)
 
 
 def automated_parsing(file_specifiers=None, get_files_from_server_storage=False, **kwargs: dict) -> Union[list, None]:
@@ -51,8 +51,7 @@ def automated_parsing(file_specifiers=None, get_files_from_server_storage=False,
 
     file_path = file_specifiers['filepath']
     if get_files_from_server_storage:
-        file_path = file_path.replace('uploads/', '')
-        file_path = uploads_path + file_path
+        file_path = uploads_prefix + file_path
 
     try:
         # choose correct file type
@@ -62,16 +61,16 @@ def automated_parsing(file_specifiers=None, get_files_from_server_storage=False,
         elif file_specifiers['fileformat'] == 'sleep_scoring':
             # call scoring file parse function
             try:
-                stage_map = get_stagemap(studyid=file_specifiers['studyid'], versionid=file_specifiers['versionid'])
+                stage_map = get_stagemap(studyid=file_specifiers['studyid'], versionid=file_specifiers['versionid'], file_upload_prefix=uploads_prefix)
             except FileNotFoundError:
                 try:
-                    stage_map = get_stagemap_by_studyid(file_specifiers['filepath'], file_specifiers['studyid'])
+                    stage_map = get_stagemap_by_studyid(file_specifiers['filepath'], file_specifiers['studyid'], )
                 except FileNotFoundError:
                     warnings.warn(file_specifiers['filepath']+' - Stagemap was not found. Skipping parse')
                     return None
 
             obj_ret = parse_scorefile(file_path, stage_map)
-        elif file_specifiers['fileformat'] == 'tabular' or file_specifiers['fileformat'] == 'stage_map':
+        elif file_specifiers['fileformat'] == 'tabular':
             # call tabulardata file parse function
             obj_ret = parse_tabular_file(file_path)
         #elif Add more fileformats here :)
@@ -103,7 +102,7 @@ if __name__ == '__main__':
     If some error occurs, this is logged but not raised too, so that the regular db can continue as normal.
     TODO: we should probably alert an admin in this case (somehow, automatic email?)
     """
-    parse_rate = 5 #seconds per DB query
+    parse_rate = 3 #seconds per DB query
     problem_files = []
     while True: #Run indefinatly
         try:
@@ -136,7 +135,7 @@ if __name__ == '__main__':
                         data_specifiers.update({k:data.pop(k) for k in data_keys if k in upload_kwargs})
                         med_api.upload_data(data=data, fid=file_info['_id'], **data_specifiers)
                         if debug:
-                            print('\r   Uploaded data row',idx+1,'of',len(data_out),'for',file_info['filename'])
+                            print('\r   Uploaded data row', idx+1, 'of', len(data_out), 'for', file_info['filename'])
                 med_api.update_parsed_status(fid=file_info['_id'], status=True)
 
             except Exception as e:  # some kind of parsing error on a specific file
