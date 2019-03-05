@@ -95,7 +95,7 @@ def get_stagemap_by_studyid(file, studyid):
     else:
         stagemap_type = studyid
 
-    stagemap = pd.read_excel(module_path+'/stagemaps/' + stagemap_type + '_stagemap.xlsx',
+    stagemap = pd.read_excel(module_path+'/../stagemaps/' + stagemap_type + '_stagemap.xlsx',
                              converters={'mapsfrom': str, 'mapsto': str})
     stage_map = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
     return stage_map
