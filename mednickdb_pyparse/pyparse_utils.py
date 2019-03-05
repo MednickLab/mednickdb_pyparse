@@ -3,9 +3,14 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 import os
-from mednickdb_pyapi import MednickAPI
+import warnings
+try:
+    from mednickdb_pyapi import MednickAPI
+except:
+    warnings.warn('MednickDB API could not be imported. Some functions will not work.')
 
 module_path = os.path.dirname(os.path.abspath(__file__))
+
 
 def hume_matfile_loader(matfile_path):
     """
@@ -16,8 +21,12 @@ def hume_matfile_loader(matfile_path):
     mat_struct = loadmat(matfile_path)
 
     # build a list of keys and values for each entry in the structure
-    vals = mat_struct['stageData'][0, 0] 
-    keys = mat_struct['stageData'][0, 0].dtype.descr
+    if 'stageData' in mat_struct:
+        vals = mat_struct['stageData'][0, 0]
+        keys = mat_struct['stageData'][0, 0].dtype.descr
+    elif 'mrk' in mat_struct:
+        mat_dict = {'stages':mat_struct['mrk'][:, 0]}
+        return mat_dict
 
     # Assemble the keys and values into variables with the same name as that used in MATLAB
     mat_dict = {}
@@ -65,6 +74,7 @@ def get_stagemap(studyid, versionid, file_upload_prefix):
     stage_map = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
 
     return stage_map
+
 
 def get_stagemap_by_studyid(file, studyid):
     """

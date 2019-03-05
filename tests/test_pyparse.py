@@ -1,13 +1,9 @@
 import sys, os
 my_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, my_path + '/../mednickdb_pyparse')
-
 from mednickdb_auto_parse import automated_parsing
 import datetime
-
-
-# tests for python parsing part of mednickdb
-
+"""tests for python parsing part of mednickdb"""
 
 def test_multiline_tabular():
     dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/testtabular1.xlsx"),
@@ -139,8 +135,8 @@ def test_edf_parse():
     assert (dict_out == correct_return)
 
 
-def test_mat_scorefile():
-    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/mattype_scorefile.mat"),
+def test_hume1_scorefile():
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/humetype1_scorefile.mat"),
                                  fileformat='sleep_scoring',
                                  filetype='sleep_scoring', versionid=1,
                                  subjectid=2,
@@ -148,7 +144,7 @@ def test_mat_scorefile():
                                  sessionid=1,
                                  studyid="GSF")[0]
 
-    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/mattype_scorefile.mat'), 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring',
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/humetype1_scorefile.mat'), 'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring',
                       'subjectid': 2, 'visitid': 1, 'sessionid': 1, 'studyid': 'GSF',
                       'starttime': datetime.datetime(2016, 1, 1, 0, 1, 42, 841003),
                       'mins_in_waso': 0.0, 'mins_in_stage1': 1.0, 'mins_in_stage2': 2.0,
@@ -157,6 +153,31 @@ def test_mat_scorefile():
                       'trans_prob_from_stage1': [0.0, 0.0, 1.0, 0.0, 0.0], 'trans_prob_from_stage2': [0.0, 0.0, 0.0, 1.0, 0.0],
                       'trans_prob_from_sws': [0.0, 0.0, 1.0, 0.0, 0.0], 'trans_prob_from_rem': [None, None, None, None, None],}
 
+    assert all([dict_out[k] == correct_return[k] for k in correct_return.keys()])
+
+
+def test_hume2_scorefile():
+    dict_out = automated_parsing(filepath=os.path.join(os.path.dirname(__file__),"testfiles/humetype2_scorefile.mat"),
+                                 fileformat='sleep_scoring',
+                                 filetype='sleep_scoring', versionid=1,
+                                 subjectid=2,
+                                 visitid=1,
+                                 sessionid=1,
+                                 studyid="GSF")[0]
+
+    correct_return = {'filepath': '/data/microservices/mednickdb_pyparse/tests/testfiles/humetype2_scorefile.mat',
+                      'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2,
+                      'visitid': 1, 'sessionid': 1, 'studyid': 'GSF', 'starttime': None, 'epoch_len': 30,
+                      'mins_in_waso': 20.5, 'mins_in_stage1': 6.5, 'mins_in_stage2': 308.0, 'mins_in_sws': 98.5,
+                      'mins_in_rem': 158.5, 'sleep_efficiency': 0.9653716216216216, 'total_sleep_time': 571.5,
+                      'sleep_latency': 16.0, 'num_awakenings': 32,
+                      'trans_prob_from_waso': [0.0, 0.15625, 0.46875, 0.03125, 0.34375], 'trans_prob_from_stage1':
+                          [0.3333333333333333, 0.0, 0.6666666666666666, 0.0, 0.0], 'trans_prob_from_stage2':
+                          [0.3076923076923077, 0.0, 0.0, 0.5192307692307693, 0.17307692307692307],
+                      'trans_prob_from_sws': [0.07142857142857142, 0.0, 0.9285714285714286, 0.0, 0.0],
+                      'trans_prob_from_rem': [0.6, 0.0, 0.4, 0.0, 0.0], 'average_bout_duration_waso': 0.640625,
+                      'average_bout_duration_stage1': 1.0833333333333333, 'average_bout_duration_stage2': 5.811320754716981,
+                      'average_bout_duration_sws': 3.517857142857143, 'average_bout_duration_rem': 7.925}
     assert all([dict_out[k] == correct_return[k] for k in correct_return.keys()])
 
 

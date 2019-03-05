@@ -10,21 +10,19 @@ import numpy as np
 import scipy.interpolate
 import datetime
 from pyparse_utils import hume_matfile_loader, mat_datenum_to_py_datetime
-from mednickdb_pysleep.defaults import stages_to_consider, include_self_transitions, wake_stages_to_consider, \
+from mednickdb_pysleep.pysleep_defaults import stages_to_consider, include_self_transitions, wake_stages_to_consider, \
     non_sleep_stages, epoch_len, unknown_stage, sleep_stages
-from mednickdb_pysleep import utils as pysleep_utils
-from mednickdb_pysleep import sleep_architecture, sleep_dynamics
-
+from mednickdb_pysleep import sleep_architecture, sleep_dynamics, pysleep_utils
 
 
 def parse_scorefile(file, stage_map):
     """
     Parses a scorefile to a dict that can be uploaded to database
     :param file: file to parse
-    :param studyid: studyid of file, nessary for handling stage conversion. #TODO test database pull of this info
+    :param stage_map: stagemap that maps the scorefiles stages to mednickdb stages, get either from stagesmaps/
+        folder ```get_stagemap``` or from the db (```get_stagemap_by_studyid```)
     :return: dict ready to upload, with any new data extracted from file in it. Current variable extracted are:
      - epochstage: a stage by stage map of sleep e.g. [0 1 2 1 2 3]. 0=wake, 1=stage1, 2=stage2, 3=SWS, REM=4, -1=Unknown
-     - epochoffset: the start time, as a wall-clock time? TODO check me.
      - sleep_efficeny: standard sleep efficency. sleep time/(sleep + wake time)
      - total_sleep_time: total time asleep (in stages 1, 2, SWS, REM)
      - mins_in_X
@@ -129,6 +127,7 @@ def _split_wake(epochstages, wake_base, waso, wbso, wase, sleep_stages):
         epochstages[epochs_of_wase] = wase
     return epochstages.tolist()
 
+
 def _hume_parse(file):
     """
     Parse HUME type matlab file
@@ -136,9 +135,16 @@ def _hume_parse(file):
     :return: dict with epochstage, epochoffset, starttime keys
     """
     hume_dict = hume_matfile_loader(file)
+    if 'stageTime' in hume_dict:
+        epoch_offset = hume_dict['stageTime'] * hume_dict['win'] * 2 #TODO why is this 2?
+        starttime = mat_datenum_to_py_datetime(hume_dict['lightsOFF'])
+    else:
+        epoch_offset = np.arange(0, len(hume_dict['stages']))*epoch_len
+        starttime = None
+
     dict_obj = {"epochstage": hume_dict['stages'],
-                "epochoffset": hume_dict['stageTime']*hume_dict['win']*2,
-                "starttime": mat_datenum_to_py_datetime(hume_dict['lightsOFF'])} #TODO deal with hume timing issues
+                "epochoffset": epoch_offset,
+                "starttime": starttime} #TODO deal with hume timing issues
 
     return dict_obj
 

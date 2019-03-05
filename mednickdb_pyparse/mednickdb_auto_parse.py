@@ -65,7 +65,7 @@ def automated_parsing(file_specifiers=None, get_files_from_server_storage=False,
                 stage_map = get_stagemap(studyid=file_specifiers['studyid'], versionid=file_specifiers['versionid'], file_upload_prefix=uploads_prefix)
             except FileNotFoundError:
                 try:
-                    stage_map = get_stagemap_by_studyid(file_specifiers['filepath'], file_specifiers['studyid'], )
+                    stage_map = get_stagemap_by_studyid(file_specifiers['filepath'], file_specifiers['studyid'])
                 except FileNotFoundError:
                     warnings.warn(file_specifiers['filepath']+' - Stagemap was not found. Skipping parse')
                     return None
