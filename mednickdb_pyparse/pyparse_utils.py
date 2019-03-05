@@ -7,7 +7,7 @@ import warnings
 try:
     from mednickdb_pyapi import MednickAPI
 except:
-    warnings.warn('MednickDB API could not be imported. Some functions will not work.')
+    warnings.warn('MednickDB API could not be imported. Some functions will not work.') #TODO this should not be needed
 
 module_path = os.path.dirname(os.path.abspath(__file__))
 
