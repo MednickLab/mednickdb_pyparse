@@ -1,5 +1,2 @@
 include stagemaps/*
-include stagemaps/CAPStudy_stagemap.xlsx
-include LICENCE.txt
-include errors.log
 recursive-include mednickdb_pyparse *
