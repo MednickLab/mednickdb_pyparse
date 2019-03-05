@@ -7,7 +7,8 @@ setup(name='mednickdb_pyparse',
       author='Ben Yetton',
       author_email='bdyetton@gmail.com',
       license='MIT',
-      include_package_data=True,
       packages = ['mednickdb_pyparse'],
       requires=['pandas','numpy','glob','mne'],
-      zip_safe=False)
+      zip_safe=False,
+      include_package_data=True,
+      )
