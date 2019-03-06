@@ -4,10 +4,10 @@ import time
 import warnings
 import logging
 from typing import Union, List, Dict, Tuple
-from .parse_scorefile import parse_scorefile
-from .pyparse_utils import get_stagemap, get_stagemap_by_studyid
-from .parse_edf import parse_eeg_file
-from .parse_tabular import parse_tabular_file
+from mednickdb_pyparse.parse_scorefile import parse_scorefile
+from mednickdb_pyparse.pyparse_utils import get_stagemap, get_stagemap_by_studyid
+from mednickdb_pyparse.parse_edf import parse_eeg_file
+from mednickdb_pyparse.parse_tabular import parse_tabular_file
 from mednickdb_pyapi import MednickAPI
 
 
