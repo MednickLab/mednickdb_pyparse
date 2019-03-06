@@ -82,7 +82,7 @@ def get_stagemap_by_studyid(file, studyid):
     :param studyid: the studyid of the file.
     :param file: The scorefile to parse
     :return: the stagemap,a dict which converts one stage format to another
-    :raises: FileNotFoundError if file was not found on the server
+    :raises: FileNotFoundError if file was not found
     """
     if file.endswith('.mat'):
         stagemap_type = 'hume'
@@ -95,7 +95,19 @@ def get_stagemap_by_studyid(file, studyid):
     else:
         stagemap_type = studyid
 
-    stagemap = pd.read_excel(module_path+'/../stagemaps/' + stagemap_type + '_stagemap.xlsx',
+    stagemap = pd.read_excel(module_path+'/stagemaps/' + stagemap_type + '_stagemap.xlsx',
+                             converters={'mapsfrom': str, 'mapsto': str})
+    stage_map = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
+    return stage_map
+
+
+def get_stagemap_by_name(stagemap_name):
+    """
+    Gets the map from for converting a scorefile's stages to the standard format used by the db. File is grabbed from stagemaps/ dir.
+    :param stagemap_name: name of the stagemap to load, one of {'hume', 'xml', 'grass'} or the name of a studyid
+    :raises: FileNotFoundError if file was not found
+    """
+    stagemap = pd.read_excel(module_path+'/stagemaps/' + stagemap_name + '_stagemap.xlsx',
                              converters={'mapsfrom': str, 'mapsto': str})
     stage_map = {k: v for k, v in zip(stagemap['mapsfrom'], stagemap['mapsto'])}
     return stage_map
