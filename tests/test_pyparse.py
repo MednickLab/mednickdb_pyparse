@@ -168,7 +168,7 @@ def test_hume2_scorefile():
                                  sessionid=1,
                                  studyid="GSF")[0]
 
-    correct_return = {'filepath': '/data/microservices/mednickdb_pyparse/tests/testfiles/humetype2_scorefile.mat',
+    correct_return = {'filepath': os.path.join(os.path.dirname(__file__),'testfiles/humetype2_scorefile.mat'),
                       'fileformat': 'sleep_scoring', 'filetype': 'sleep_scoring', 'versionid': 1, 'subjectid': 2,
                       'visitid': 1, 'sessionid': 1, 'studyid': 'GSF', 'starttime': None, 'epoch_len': 30,
                       'mins_in_waso': 20.5, 'mins_in_stage1': 6.5, 'mins_in_stage2': 308.0, 'mins_in_sws': 98.5,
