@@ -1,7 +1,9 @@
 import sys, os
 my_path = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(my_path+'./../mednickdb_pyparse/')
-sys.path.append(my_path+'./mednickdb_pyparse/')
+sys.path.append(my_path+'/../mednickdb_pyparse/')
+sys.path.append(my_path+'/mednickdb_pyparse/')
+sys.path.append(my_path+'/../')
+print(sys.path[-2:])
 from mednickdb_pyparse.mednickdb_auto_parse import automated_parsing
 import datetime
 """tests for python parsing part of mednickdb"""
